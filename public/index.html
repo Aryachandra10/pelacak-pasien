@@ -1,0 +1,968 @@
+<!DOCTYPE html>
+<!--
+  ===================================================================
+  index.html — Monitoring Pasien Prioritas — RS Pelabuhan Jakarta
+  ===================================================================
+  Modul "Jadwal Berobat Pasien" DIPISAH dan di-LOAD OTOMATIS:
+    • CSS    : ../css/jadwal_berobat.css (dimuat di <head>)
+    • Markup : jadwal_berobat.html      (di-fetch + di-inject via JS)
+    • Backend: jadwal_berobat.php       (opsional, REST API)
+
+  Loader otomatis ada di <script> paling bawah (lihat bagian
+  "LOADER JADWAL BEROBAT"). Ubah JADWAL_SOURCES kalau path berbeda.
+  ===================================================================
+-->
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#1B5FAA">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <title>Monitoring Pasien Prioritas - RS Pelabuhan Jakarta</title>
+
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+  <link rel="stylesheet" href="../css/style.css">
+  <!-- CSS khusus Jadwal Berobat (dipisah dari style.css) -->
+  <link rel="stylesheet" href="../css/jadwal_berobat.css">
+</head>
+<body>
+  <header class="bar">
+    <div class="bar-brand">
+      <img
+        src="../assets/img/logo IHC RSPJ.png"
+        alt="RS Pelabuhan Jakarta"
+        class="brand-logo"
+        width="150" height="44"
+        onerror="this.style.display='none'">
+      <div class="bar-brand-text">
+        <h1>Monitoring Pasien Prioritas</h1>
+      </div>
+    </div>
+
+    <div class="bar-right">
+      <a class="btn ghost" href="patient.html" target="_blank" rel="noopener">Pasien</a>
+    </div>
+  </header>
+
+  <main class="layout">
+    <div id="map" role="application" aria-label="Peta lokasi pasien"></div>
+
+    <div class="top-card" id="topCard">
+      <div class="loc-icon green" id="locIcon1">●</div>
+      <div class="loc-text" id="locText1">
+        Lokasi Pasien
+        <small>Menunggu data…</small>
+      </div>
+      <button class="edit-btn" type="button" id="editBtn">Edit</button>
+    </div>
+
+    <button class="back-fab" type="button" aria-label="Kembali" onclick="history.back()">←</button>
+
+    <section class="bottom-panel hidden" id="bottomPanel" aria-label="Informasi layanan">
+      <div class="handle"></div>
+      <div id="bottomPanelContent"></div>
+    </section>
+
+    <div class="my-location-wrap">
+      <div class="my-location-info" id="myLocationInfo" role="status" aria-live="polite"></div>
+      <button class="my-location-btn" type="button" id="myLocationBtn" aria-label="Deteksi lokasi saya">
+        📍 Lokasi Saya
+      </button>
+    </div>
+
+    <aside class="side" id="sidePanel" aria-label="Daftar pasien prioritas">
+      <button class="sheet-handle" id="sheetHandle" type="button" aria-label="Buka/tutup daftar"></button>
+      <div class="sheet-title">
+        <b>Pasien Prioritas</b>
+        <span id="liveTag">● LIVE</span>
+      </div>
+      <p id="summary" class="summary">Belum ada pasien yang membagikan lokasi.</p>
+      <ul id="list" class="list"></ul>
+
+      <!-- =========================================================
+           JADWAL BEROBAT akan di-inject di sini secara otomatis
+           oleh loader di bagian bawah file (lihat #JADWAL_BEROBAT_SLOT).
+           ========================================================= -->
+      <!-- #JADWAL_BEROBAT_SLOT# -->
+    </aside>
+  </main>
+
+  <!-- =========================================================
+       MODAL TAMBAH JADWAL akan di-inject otomatis ke <body>
+       oleh loader (id target: #scheduleModal).
+       ========================================================= -->
+  <!-- #JADWAL_BEROBAT_MODAL_SLOT# -->
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+  <script src="../config.php"></script>
+  <script src="../js/transport.js"></script>
+  <script src="../js/dashboard.js"></script>
+
+  <script>
+    (function () {
+      'use strict';
+
+      /* =========================================================
+         1. DETEKSI PLATFORM
+         ========================================================= */
+      var ua = navigator.userAgent || '';
+      var platform = navigator.platform || '';
+      var maxTouch = navigator.maxTouchPoints || 0;
+
+      var isIOS = /iPad|iPhone|iPod/.test(ua) ||
+                  (platform === 'MacIntel' && maxTouch > 1);
+      var isAndroid = /Android/i.test(ua);
+
+      var rootEl = document.documentElement;
+      if (isIOS)          rootEl.classList.add('is-ios');
+      else if (isAndroid) rootEl.classList.add('is-android');
+      else                rootEl.classList.add('is-desktop');
+
+      window.__PLATFORM__ = isIOS ? 'ios' : isAndroid ? 'android' : 'other';
+
+      var $ = function (id) { return document.getElementById(id); };
+      var side = $('sidePanel');
+
+      /* =========================================================
+         2. VIEWPORT FIX — Android
+         ========================================================= */
+      if (isAndroid) {
+        var setVH = function () {
+          document.documentElement.style.setProperty('--vh', (window.innerHeight * 0.01) + 'px');
+        };
+        setVH();
+        window.addEventListener('resize', setVH);
+        window.addEventListener('orientationchange', function () { setTimeout(setVH, 200); });
+
+        if (window.visualViewport) {
+          window.visualViewport.addEventListener('resize', function () {
+            if (window.visualViewport.height < window.innerHeight * 0.75) {
+              document.documentElement.style.setProperty('--vh', (window.visualViewport.height * 0.01) + 'px');
+            } else {
+              setVH();
+            }
+          });
+        }
+      }
+
+      /* =========================================================
+         3. MAP + SHEET
+         ========================================================= */
+      function fixMap(ms) {
+        if (window.map && typeof window.map.invalidateSize === 'function') {
+          setTimeout(function () { window.map.invalidateSize(); }, ms);
+        }
+      }
+      window.addEventListener('load', function () { fixMap(200); });
+      window.addEventListener('resize', function () { fixMap(150); });
+
+      function syncSheet() {
+        document.documentElement.style.setProperty('--sheet-h', side.offsetHeight + 'px');
+      }
+      if (window.ResizeObserver) new ResizeObserver(syncSheet).observe(side);
+      window.addEventListener('load', syncSheet);
+      syncSheet();
+
+      $('sheetHandle').addEventListener('click', function () {
+        side.classList.toggle('collapsed');
+        setTimeout(function () { syncSheet(); fixMap(50); }, 280);
+      });
+
+      /* =========================================================
+         4. SCROLL LOCK ADAPTIVE
+         ========================================================= */
+      var lockCount = 0;
+      var savedScrollY = 0;
+      var prevBodyStyle = {};
+
+      function lockBody() {
+        lockCount++;
+        if (lockCount > 1) return;
+
+        if (isIOS) {
+          savedScrollY = window.scrollY || window.pageYOffset || 0;
+          prevBodyStyle = {
+            position: document.body.style.position,
+            top: document.body.style.top,
+            width: document.body.style.width,
+            overflow: document.body.style.overflow
+          };
+          document.body.style.position = 'fixed';
+          document.body.style.top = -savedScrollY + 'px';
+          document.body.style.width = '100%';
+          document.body.style.overflow = 'hidden';
+        } else {
+          prevBodyStyle = { overflow: document.body.style.overflow };
+          document.body.style.overflow = 'hidden';
+        }
+      }
+
+      function unlockBody() {
+        lockCount = Math.max(0, lockCount - 1);
+        if (lockCount > 0) return;
+
+        if (isIOS) {
+          document.body.style.position = prevBodyStyle.position || '';
+          document.body.style.top = prevBodyStyle.top || '';
+          document.body.style.width = prevBodyStyle.width || '';
+          document.body.style.overflow = prevBodyStyle.overflow || '';
+          window.scrollTo(0, savedScrollY);
+        } else {
+          document.body.style.overflow = prevBodyStyle.overflow || '';
+        }
+      }
+
+      /* =========================================================
+         5. PRIORITY META
+         ========================================================= */
+      var PRIORITY_META = {
+        'president':  { color: '#E11D48', cls: 'president',  label: 'President Suite', short: 'PS' },
+        'vvip-suite': { color: '#9333EA', cls: 'vvip-suite', label: 'VVIP Suite',      short: 'VS' },
+        'vvip':       { color: '#0EA5E9', cls: 'vvip',       label: 'VVIP',            short: 'VV' },
+        'merah':      { color: '#E11D48', cls: 'president',  label: 'President Suite', short: 'PS' },
+        'kuning':     { color: '#9333EA', cls: 'vvip-suite', label: 'VVIP Suite',      short: 'VS' },
+        'biru':       { color: '#0EA5E9', cls: 'vvip',       label: 'VVIP',            short: 'VV' },
+        'hijau':      { color: '#0EA5E9', cls: 'vvip',       label: 'VVIP',            short: 'VV' }
+      };
+      var DEFAULT_PRIORITY = 'vvip';
+
+      function normalizePriority(p) {
+        if (p === 'merah')  return 'president';
+        if (p === 'kuning') return 'vvip-suite';
+        if (p === 'biru')   return 'vvip';
+        if (p === 'hijau')  return 'vvip';
+        if (PRIORITY_META[p]) return p;
+        return DEFAULT_PRIORITY;
+      }
+
+      function getPriorityMeta(p) {
+        return PRIORITY_META[p] || PRIORITY_META[DEFAULT_PRIORITY];
+      }
+
+      /* =========================================================
+         6. JADWAL BEROBAT — di-load otomatis dari file terpisah
+            (lihat loader di bagian bawah)
+         ========================================================= */
+
+      /* =========================================================
+         7. TOMBOL EDIT
+         ========================================================= */
+      $('editBtn').addEventListener('click', function () {
+        window.location.href = 'patient.html';
+      });
+
+      /* =========================================================
+         8. RINGKAS NAMA PASIEN PERTAMA
+         ========================================================= */
+      var listEl = $('list');
+      if (window.MutationObserver) {
+        new MutationObserver(function () {
+          var first = listEl.children[0];
+          var tag = $('liveTag');
+          tag.textContent = listEl.children.length ? '● LIVE · ' + listEl.children.length : '● LIVE';
+          if (first) {
+            var nm = first.querySelector('strong,b,.name');
+            var name = (nm ? nm.textContent : first.textContent).trim().split('\n')[0];
+            var t = $('locText1');
+            if (t && name && t.textContent.indexOf(name) === -1) {
+              t.innerHTML = 'Lokasi ' + name.replace(/</g, '&lt;') + '<small>Membagikan lokasi langsung</small>';
+            }
+          }
+          syncSheet();
+        }).observe(listEl, { childList: true, subtree: true });
+      }
+
+      /* =========================================================
+         9. DETEKSI GEOLOKASI ADMIN
+         ========================================================= */
+      var myLocBtn  = $('myLocationBtn');
+      var myLocInfo = $('myLocationInfo');
+      var myMarker  = null;
+      var myCircle  = null;
+
+      function showLocInfo(html) {
+        if (!myLocInfo) return;
+        myLocInfo.innerHTML = html;
+        myLocInfo.classList.add('show');
+      }
+
+      function onGeoSuccess(pos) {
+        var lat   = pos.coords.latitude;
+        var lng   = pos.coords.longitude;
+        var acc   = pos.coords.accuracy;
+        var ts    = new Date(pos.timestamp).toLocaleTimeString('id-ID');
+
+        showLocInfo(
+          '<b>Lokasi terdeteksi</b><br>' +
+          '<span class="coord">Lat: ' + lat.toFixed(6) + '<br>' +
+          'Lng: ' + lng.toFixed(6) + '</span><br>' +
+          'Akurasi: ±' + Math.round(acc) + ' m<br>' +
+          '<small>Diperbarui: ' + ts + '</small>'
+        );
+
+        if (myLocBtn) {
+          myLocBtn.disabled = false;
+          myLocBtn.innerHTML = '📍 Perbarui Lokasi';
+        }
+
+        if (window.map && window.L) {
+          if (myMarker) {
+            myMarker.setLatLng([lat, lng]);
+          } else {
+            myMarker = L.marker([lat, lng], {
+              title: 'Lokasi Saya',
+              icon: L.divIcon({
+                className: 'my-loc-marker',
+                html: '<div style="background:#92C83E;width:18px;height:18px;border:3px solid #fff;border-radius:50%;box-shadow:0 0 0 2px #92C83E,0 2px 6px rgba(0,0,0,.35);"></div>',
+                iconSize: [18, 18],
+                iconAnchor: [9, 9]
+              })
+            }).addTo(window.map);
+            myMarker.bindPopup('<b>Lokasi Saya</b><br>' +
+              lat.toFixed(6) + ', ' + lng.toFixed(6));
+          }
+
+          if (myCircle) {
+            myCircle.setLatLng([lat, lng]).setRadius(acc);
+          } else {
+            myCircle = L.circle([lat, lng], {
+              radius: acc,
+              color: '#92C83E',
+              fillColor: '#92C83E',
+              fillOpacity: 0.12,
+              weight: 1
+            }).addTo(window.map);
+          }
+
+          window.map.setView([lat, lng], Math.max(window.map.getZoom(), 16));
+        }
+      }
+
+      function onGeoError(err) {
+        var msg = 'Lokasi tidak dapat diambil.';
+        switch (err.code) {
+          case err.PERMISSION_DENIED:
+            msg = 'Izin lokasi ditolak. Aktifkan izin lokasi di pengaturan browser.';
+            break;
+          case err.POSITION_UNAVAILABLE:
+            msg = 'Informasi lokasi tidak tersedia.';
+            break;
+          case err.TIMEOUT:
+            msg = 'Permintaan lokasi habis waktu. Coba lagi.';
+            break;
+        }
+        showLocInfo('<span class="err">⚠ ' + msg + '</span>');
+        if (myLocBtn) {
+          myLocBtn.disabled = false;
+          myLocBtn.innerHTML = '📍 Lokasi Saya';
+        }
+      }
+
+      function requestMyLocation() {
+        if (!('geolocation' in navigator)) {
+          showLocInfo('<span class="err">⚠ Browser tidak mendukung Geolocation.</span>');
+          return;
+        }
+        if (myLocBtn) {
+          myLocBtn.disabled = true;
+          myLocBtn.innerHTML = '⏳ Mencari…';
+        }
+        navigator.geolocation.getCurrentPosition(
+          onGeoSuccess, onGeoError,
+          { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+        );
+      }
+
+      if (myLocBtn) myLocBtn.addEventListener('click', requestMyLocation);
+
+      /* =========================================================
+         10. KLIK PASIEN → FOKUS
+         ========================================================= */
+      function findPatientMarker(item, patientId, lat, lng) {
+        if (window.patientMarkers && patientId != null &&
+            window.patientMarkers[patientId]) {
+          return window.patientMarkers[patientId];
+        }
+        if (item && item.__marker) return item.__marker;
+        return null;
+      }
+
+      function getItemCoords(item) {
+        if (!item) return null;
+        var ds = item.dataset || {};
+        var lat = parseFloat(ds.lat);
+        var lng = parseFloat(ds.lng);
+        if (isNaN(lat) || isNaN(lng)) return null;
+        return { lat: lat, lng: lng };
+      }
+
+      function getItemName(item) {
+        if (!item) return 'Pasien';
+        var nm = item.querySelector('strong, b, .name, .item-name');
+        if (nm && nm.textContent) return nm.textContent.trim();
+        if (item.dataset && item.dataset.name) return item.dataset.name;
+        return 'Pasien';
+      }
+
+      function getItemId(item) {
+        if (!item) return null;
+        var ds = item.dataset || {};
+        return ds.id || ds.patientId || ds.patient_id || null;
+      }
+
+      function focusPatient(item) {
+        if (!item) return;
+
+        var name = getItemName(item);
+        var id   = getItemId(item);
+        var crd  = getItemCoords(item);
+        var lat  = crd ? crd.lat : null;
+        var lng  = crd ? crd.lng : null;
+
+        var marker = findPatientMarker(item, id, lat, lng);
+        if ((lat == null || lng == null) && marker &&
+            typeof marker.getLatLng === 'function') {
+          var ll = marker.getLatLng();
+          lat = ll.lat;
+          lng = ll.lng;
+        }
+
+        var siblings = listEl.querySelectorAll('.item');
+        for (var i = 0; i < siblings.length; i++) {
+          siblings[i].classList.remove('active');
+        }
+        item.classList.add('active');
+
+        var t = $('locText1');
+        if (t) {
+          var subText = 'Membagikan lokasi langsung';
+          if (lat != null && lng != null) {
+            subText = 'Lat ' + Number(lat).toFixed(5) +
+                      ', Lng ' + Number(lng).toFixed(5);
+          }
+          t.innerHTML = 'Lokasi ' +
+            String(name).replace(/</g, '&lt;') +
+            '<small>' + subText + '</small>';
+        }
+
+        if (window.map && lat != null && lng != null) {
+          try {
+            if (typeof window.map.flyTo === 'function') {
+              window.map.flyTo([lat, lng], 17, { duration: 1.2 });
+            } else {
+              window.map.setView([lat, lng], 17, { animate: true });
+            }
+          } catch (e) {
+            window.map.setView([lat, lng], 17);
+          }
+          if (marker && typeof marker.openPopup === 'function') {
+            setTimeout(function () {
+              try { marker.openPopup(); } catch (e) {}
+            }, 1300);
+          }
+        }
+      }
+
+      listEl.addEventListener('click', function (e) {
+        var node = e.target;
+        while (node && node !== listEl) {
+          if (node.classList && node.classList.contains('item')) break;
+          node = node.parentNode;
+        }
+        if (!node || node === listEl) return;
+        if (e.target.closest &&
+            e.target.closest('.del, .remove-btn, [data-action="delete"]')) {
+          return;
+        }
+        focusPatient(node);
+      });
+
+      /* =========================================================
+         11. TERIMA KOORDINAT PASIEN REALTIME
+         ========================================================= */
+      window.patientMarkers = window.patientMarkers || {};
+      var patientData = {};
+
+      function makePatientIcon(priority) {
+        var norm = normalizePriority(priority);
+        var meta = getPriorityMeta(norm);
+        return L.divIcon({
+          className: 'pin ' + meta.cls,
+          html: '<div class="pin ' + meta.cls + '" ' +
+                'style="background:' + meta.color + ';">' +
+                '<span class="pulse"></span></div>',
+          iconSize: [26, 26],
+          iconAnchor: [13, 13],
+          popupAnchor: [0, -12]
+        });
+      }
+
+      function makePatientPopupHTML(data) {
+        var safeName = String(data.name || 'Pasien').replace(/</g, '&lt;');
+        var lat = Number(data.lat).toFixed(6);
+        var lng = Number(data.lng).toFixed(6);
+        var acc = data.accuracy != null ? '±' + Math.round(data.accuracy) + ' m' : '-';
+        var prioLabel = getPriorityMeta(normalizePriority(data.priority)).label;
+
+        var when = '';
+        if (data.ts) {
+          try { when = new Date(data.ts).toLocaleTimeString('id-ID'); } catch (e) {}
+        }
+
+        return '<div style="min-width:180px;">' +
+               '<b>' + safeName + '</b><br>' +
+               '<span style="font-size:11px;color:#555;">' +
+                 'Kelas: <b>' + prioLabel + '</b><br>' +
+                 'Lat ' + lat + ', Lng ' + lng + '<br>' +
+                 'Akurasi ' + acc +
+                 (when ? '<br>Update: ' + when : '') +
+               '</span>' +
+               '</div>';
+      }
+
+      function upsertPatientMarker(data) {
+        if (!data || data.lat == null || data.lng == null) return;
+
+        var id = data.id || (data.name || '').toLowerCase().replace(/\s+/g, '-');
+        if (!id) return;
+
+        var lat = Number(data.lat);
+        var lng = Number(data.lng);
+        if (isNaN(lat) || isNaN(lng)) return;
+
+        var prio = normalizePriority(data.priority);
+
+        patientData[id] = {
+          id: id,
+          name: data.name || 'Pasien',
+          priority: prio,
+          lat: lat,
+          lng: lng,
+          accuracy: data.accuracy,
+          ts: data.ts || Date.now()
+        };
+
+        if (!window.map || !window.L) return;
+
+        var marker = window.patientMarkers[id];
+        var icon   = makePatientIcon(prio);
+        var popup  = makePatientPopupHTML(patientData[id]);
+
+        if (!marker) {
+          marker = L.marker([lat, lng], {
+            icon: icon,
+            title: patientData[id].name,
+            riseOnHover: true
+          }).addTo(window.map);
+          marker.bindPopup(popup);
+          window.patientMarkers[id] = marker;
+        } else {
+          marker.setLatLng([lat, lng]);
+          marker.setIcon(icon);
+          marker.setPopupContent(popup);
+        }
+
+        upsertPatientListItem(patientData[id]);
+      }
+
+      function upsertPatientListItem(data) {
+        var id = data.id;
+        var item = listEl.querySelector('[data-id="' + id + '"]');
+
+        var prio = normalizePriority(data.priority);
+        var meta = getPriorityMeta(prio);
+        var label = meta.label;
+
+        if (!item) {
+          item = document.createElement('li');
+          item.className = 'item ' + meta.cls;
+          item.dataset.id = id;
+          item.dataset.name = data.name;
+          item.dataset.priority = prio;
+          item.dataset.lat = data.lat;
+          item.dataset.lng = data.lng;
+
+          var btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'item-btn';
+
+          var top = document.createElement('div');
+          top.className = 'item-top';
+
+          var nameWrap = document.createElement('div');
+          var nameEl = document.createElement('strong');
+          nameEl.textContent = data.name;
+          nameWrap.appendChild(nameEl);
+
+          var nameMeta = document.createElement('div');
+          nameMeta.className = 'item-meta';
+          nameMeta.textContent = 'Lat ' + Number(data.lat).toFixed(5) +
+                                 ', Lng ' + Number(data.lng).toFixed(5);
+          nameWrap.appendChild(nameMeta);
+
+          var tag = document.createElement('span');
+          tag.className = 'tag ' + meta.cls;
+          tag.textContent = label;
+
+          top.appendChild(nameWrap);
+          top.appendChild(tag);
+          btn.appendChild(top);
+
+          item.appendChild(btn);
+          listEl.appendChild(item);
+        } else {
+          item.dataset.lat = data.lat;
+          item.dataset.lng = data.lng;
+          item.dataset.priority = prio;
+
+          var metaEl = item.querySelector('.item-meta');
+          if (metaEl) {
+            metaEl.textContent = 'Lat ' + Number(data.lat).toFixed(5) +
+                                 ', Lng ' + Number(data.lng).toFixed(5);
+          }
+          var tagEl = item.querySelector('.tag');
+          if (tagEl) {
+            tagEl.className = 'tag ' + meta.cls;
+            tagEl.textContent = label;
+          }
+          var wasActive = item.classList.contains('active');
+          item.className = 'item ' + meta.cls + (wasActive ? ' active' : '');
+        }
+
+        if (window.patientMarkers[id]) {
+          item.__marker = window.patientMarkers[id];
+        }
+
+        var summaryEl = $('summary');
+        if (summaryEl) {
+          var total = listEl.querySelectorAll('.item').length;
+          summaryEl.textContent = total
+            ? total + ' pasien membagikan lokasi.'
+            : 'Belum ada pasien yang membagikan lokasi.';
+        }
+        updateLiveTag();
+      }
+
+      function removePatient(data) {
+        if (!data || !data.id) return;
+        var id = data.id;
+        var marker = window.patientMarkers[id];
+        if (marker && window.map && typeof window.map.removeLayer === 'function') {
+          try { window.map.removeLayer(marker); } catch (e) {}
+        }
+        delete window.patientMarkers[id];
+        delete patientData[id];
+
+        var item = listEl.querySelector('[data-id="' + id + '"]');
+        if (item && item.parentNode) item.parentNode.removeChild(item);
+
+        var summaryEl = $('summary');
+        if (summaryEl) {
+          var total = listEl.querySelectorAll('.item').length;
+          summaryEl.textContent = total
+            ? total + ' pasien membagikan lokasi.'
+            : 'Belum ada pasien yang membagikan lokasi.';
+        }
+        updateLiveTag();
+      }
+
+      function updatePatientInfo(data) {
+        if (!data || !data.id) return;
+        var existing = patientData[data.id];
+        if (!existing) return;
+
+        existing.name = data.name || existing.name;
+        if (data.priority) {
+          existing.priority = normalizePriority(data.priority);
+        }
+
+        var marker = window.patientMarkers[data.id];
+        if (marker) {
+          marker.setIcon(makePatientIcon(existing.priority));
+          marker.setPopupContent(makePatientPopupHTML(existing));
+        }
+        upsertPatientListItem(existing);
+      }
+
+      function updateLiveTag() {
+        var tag = $('liveTag');
+        if (!tag) return;
+        var total = listEl.querySelectorAll('.item').length;
+        tag.textContent = total ? '● LIVE · ' + total : '● LIVE';
+      }
+
+      /* =========================================================
+         12. TRANSPORT
+         ========================================================= */
+      var rxTransport = null;
+      if (typeof createTransport === 'function') {
+        try {
+          rxTransport = createTransport(
+            function (msg) {
+              if (!msg || typeof msg !== 'object') return;
+              switch (msg.type) {
+                case 'location':      upsertPatientMarker(msg); break;
+                case 'patient-info':  updatePatientInfo(msg);   break;
+                case 'location-stop': removePatient(msg);       break;
+              }
+            },
+            function (state) {
+              var connEl = $('connStatus');
+              if (connEl) {
+                connEl.textContent = String(state || '').toUpperCase();
+                connEl.className = 'conn ' + state;
+              }
+            }
+          );
+        } catch (e) {
+          console.warn('createTransport gagal:', e);
+        }
+      }
+
+      /* =========================================================
+         13. FALLBACK localStorage
+         ========================================================= */
+      var LS_LIVE_KEY = 'pasien_lokasi_live';
+      var lastSnapshot = '';
+
+      function loadFromLocalStorage(force) {
+        try {
+          var raw = localStorage.getItem(LS_LIVE_KEY);
+          if (!raw) {
+            if (force) {
+              var items = listEl.querySelectorAll('.item');
+              for (var k = 0; k < items.length; k++) {
+                var iid = items[k].dataset.id;
+                if (window.patientMarkers[iid] && window.map) {
+                  try { window.map.removeLayer(window.patientMarkers[iid]); } catch (e) {}
+                }
+                delete window.patientMarkers[iid];
+                delete patientData[iid];
+                items[k].parentNode.removeChild(items[k]);
+              }
+              updateLiveTag();
+            }
+            return;
+          }
+          if (!force && raw === lastSnapshot) return;
+          lastSnapshot = raw;
+
+          var arr = JSON.parse(raw);
+          if (!Array.isArray(arr)) return;
+
+          var activeIds = {};
+          arr.forEach(function (p) {
+            if (p && p.lat != null && p.lng != null) {
+              p.priority = normalizePriority(p.priority);
+              activeIds[p.id] = true;
+              upsertPatientMarker(p);
+            }
+          });
+
+          Object.keys(patientData).forEach(function (pid) {
+            if (!activeIds[pid]) removePatient({ id: pid });
+          });
+        } catch (e) {
+          console.warn('loadFromLocalStorage error:', e);
+        }
+      }
+
+      loadFromLocalStorage(true);
+
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function () {
+          loadFromLocalStorage(true);
+        }, { once: true });
+      }
+
+      window.addEventListener('load', function () {
+        loadFromLocalStorage(true);
+      });
+
+      window.addEventListener('storage', function (e) {
+        if (e.key === LS_LIVE_KEY) {
+          lastSnapshot = '';
+          loadFromLocalStorage(true);
+        }
+      });
+
+      setInterval(function () { loadFromLocalStorage(false); }, 2000);
+
+      document.addEventListener('visibilitychange', function () {
+        if (document.visibilityState === 'visible') {
+          lastSnapshot = '';
+          loadFromLocalStorage(true);
+        }
+      });
+
+      /* =========================================================
+         14. API PUBLIK
+         ========================================================= */
+      window.__dashboard = {
+        upsert: upsertPatientMarker,
+        remove: removePatient,
+        updateInfo: updatePatientInfo,
+        reload: function () { lastSnapshot = ''; loadFromLocalStorage(true); },
+        normalizePriority: normalizePriority,
+        markers: window.patientMarkers,
+        data: patientData,
+        transport: function () { return rxTransport; },
+        /* utility — dipakai modul jadwal berobat */
+        lockBody: lockBody,
+        unlockBody: unlockBody,
+        syncSheet: syncSheet,
+        fixMap: fixMap
+      };
+    })();
+  </script>
+
+  <!-- =================================================================
+       LOADER JADWAL BEROBAT
+       =================================================================
+       Otomatis:
+         1. Fetch jadwal_berobat.html (coba beberapa path)
+         2. Inject .schedule-section → ke #sidePanel
+         3. Inject .modal-overlay#scheduleModal → ke <body>
+         4. Eksekusi ulang semua <script> inline
+         5. Trigger syncSheet() agar tinggi sheet dihitung ulang
+
+       Ubah array JADWAL_SOURCES kalau lokasi file berbeda.
+       ================================================================= -->
+  <script>
+    (function () {
+      'use strict';
+
+      if (window.__JADWAL_LOADER_INIT__) return;
+      window.__JADWAL_LOADER_INIT__ = true;
+
+      /* ---------- KONFIGURASI PATH (urut prioritas) ---------- */
+      var JADWAL_SOURCES = [
+        'jadwal_berobat.html',        // ← 1) folder yang sama dengan index.html
+        '../jadwal_berobat.html',     // ← 2) folder induk
+        'jadwal_berobat_view.php'     // ← 3) fallback (jika server render PHP)
+      ];
+
+      /* ---------- Helper ---------- */
+      function fetchFirstAvailable(sources, index) {
+        if (index >= sources.length) {
+          return Promise.reject(new Error('Semua path gagal: ' + sources.join(', ')));
+        }
+        var url = sources[index];
+        return fetch(url, { cache: 'no-cache' })
+          .then(function (res) {
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            return res.text().then(function (txt) {
+              // Kalau server kembalikan PHP mentah (misal .php diserve statis),
+              // kita deteksi dari keberadaan "<?php" di awal — anggap gagal.
+              if (/^\s*<\?php/i.test(txt)) {
+                throw new Error('Bukan HTML (PHP source mentah)');
+              }
+              return { url: url, html: txt };
+            });
+          })
+          .catch(function (err) {
+            console.warn('[jadwal_berobat] Gagal coba "' + url + '": ' + err.message);
+            return fetchFirstAvailable(sources, index + 1);
+          });
+      }
+
+      /* ---------- Inject markup ---------- */
+      function injectMarkup(parsedDoc) {
+        var injected = { section: false, modal: false, scripts: 0 };
+
+        /* 1) Section jadwal → #sidePanel */
+        var section = parsedDoc.querySelector('.schedule-section');
+        var sidePanel = document.getElementById('sidePanel');
+        if (section && sidePanel) {
+          // Hapus placeholder komentar (opsional, biarkan saja)
+          sidePanel.appendChild(section);
+          injected.section = true;
+        } else if (!section) {
+          console.warn('[jadwal_berobat] .schedule-section tidak ditemukan.');
+        } else if (!sidePanel) {
+          console.warn('[jadwal_berobat] #sidePanel tidak ditemukan.');
+        }
+
+        /* 2) Modal → <body> */
+        var modal = parsedDoc.querySelector('#scheduleModal')
+                 || parsedDoc.querySelector('.modal-overlay');
+        if (modal) {
+          // Hindari duplikat
+          if (!document.getElementById(modal.id || 'scheduleModal')) {
+            document.body.appendChild(modal);
+            injected.modal = true;
+          }
+        } else {
+          console.warn('[jadwal_berobat] .modal-overlay#scheduleModal tidak ditemukan.');
+        }
+
+        /* 3) Eksekusi ulang <script> inline (lewati yang punya src) */
+        var scripts = parsedDoc.querySelectorAll('script');
+        scripts.forEach(function (old) {
+          if (old.src) {
+            // Muat ulang script eksternal
+            var se = document.createElement('script');
+            se.src = old.src;
+            if (old.async) se.async = true;
+            if (old.defer) se.defer = true;
+            document.body.appendChild(se);
+            return;
+          }
+          var inline = document.createElement('script');
+          // Pertahankan atribut type kalau ada (mis. module)
+          if (old.type) inline.type = old.type;
+          inline.textContent = old.textContent;
+          document.body.appendChild(inline);
+          injected.scripts++;
+        });
+
+        return injected;
+      }
+
+      /* ---------- Boot ---------- */
+      function loadJadwalBerobat() {
+        fetchFirstAvailable(JADWAL_SOURCES, 0)
+          .then(function (result) {
+            var parsed = new DOMParser().parseFromString(result.html, 'text/html');
+            var info = injectMarkup(parsed);
+
+            console.info(
+              '[jadwal_berobat] Loaded from "' + result.url + '" — ' +
+              'section=' + info.section +
+              ', modal=' + info.modal +
+              ', inline-scripts=' + info.scripts
+            );
+
+            /* 4) Recalc sheet height setelah markup masuk */
+            setTimeout(function () {
+              if (window.__dashboard && typeof window.__dashboard.syncSheet === 'function') {
+                try { window.__dashboard.syncSheet(); } catch (e) {}
+              }
+              if (window.__dashboard && typeof window.__dashboard.fixMap === 'function') {
+                try { window.__dashboard.fixMap(80); } catch (e) {}
+              }
+            }, 100);
+          })
+          .catch(function (err) {
+            console.error('[jadwal_berobat] GAGAL memuat modul:', err.message);
+            console.info(
+              '[jadwal_berobat] Pastikan salah satu file berikut ada:\n' +
+              JADWAL_SOURCES.map(function (s) { return '  • ' + s; }).join('\n')
+            );
+          });
+      }
+
+      /* Jalankan setelah dashboard.js selesai init
+         (dashboard.js adalah script inline di atas, jadi sudah selesai). */
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', loadJadwalBerobat, { once: true });
+      } else {
+        // Defer 0 — biarkan thread utama selesai dulu
+        setTimeout(loadJadwalBerobat, 0);
+      }
+    })();
+  </script>
+</body>
+</html>

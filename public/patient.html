@@ -1,0 +1,1473 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#1B5FAA">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <title>Bagikan lokasi pasien — RS Pelabuhan Jakarta</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="../css/patient.css">
+  <style>
+    /* =========================================================
+       PALET WARNA BRAND IHC RSPJ
+       ========================================================= */
+    :root {
+      --brand-blue:        #1B5FAA;
+      --brand-blue-dark:   #144A87;
+      --brand-blue-light:  #E6EEF8;
+      --brand-blue-soft:   #F2F7FC;
+
+      --brand-green:       #92C83E;
+      --brand-green-dark:  #7AB02E;
+      --brand-green-light: #F1F8E3;
+
+      --focus-ring:        #FFD54F;
+
+      --radius-modal:      20px;
+      --radius-card:       14px;
+      --pad-modal-x:       16px;
+      --pad-modal-y:       16px;
+      --anim-slide:        schedSlideUpAndroid 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+      --font-stack:        Roboto, system-ui, -apple-system, "Segoe UI", sans-serif;
+      --safe-top:          env(safe-area-inset-top, 0px);
+      --safe-bottom:       env(safe-area-inset-bottom, 0px);
+      --safe-left:         env(safe-area-inset-left, 0px);
+      --safe-right:        env(safe-area-inset-right, 0px);
+    }
+
+    .is-ios {
+      --radius-modal:  20px;
+      --pad-modal-x:   16px;
+      --pad-modal-y:   16px;
+      --anim-slide:    schedSlideUpIOS 0.32s cubic-bezier(0.32, 0.72, 0, 1);
+      --font-stack:    -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+    }
+    .is-android {
+      --radius-modal:  20px;
+      --pad-modal-x:   16px;
+      --pad-modal-y:   16px;
+      --anim-slide:    schedSlideUpAndroid 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+      --font-stack:    Roboto, system-ui, -apple-system, "Segoe UI", sans-serif;
+    }
+
+    /* =========================================================
+       RESET & GLOBAL
+       ========================================================= */
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body { -webkit-text-size-adjust: 100%; }
+    body {
+      font-family: var(--font-stack);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      overscroll-behavior-y: contain;
+    }
+
+    /* =========================================================
+       HEADER PATIENT
+       ========================================================= */
+    .top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      background: var(--brand-blue);
+      color: #fff;
+      padding: 10px 14px;
+      border-radius: 14px;
+      box-shadow: 0 2px 10px rgba(27, 95, 170, 0.25);
+    }
+    .top a[aria-label="Kembali"] {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      font-size: 20px;
+      line-height: 1;
+      text-decoration: none;
+      flex-shrink: 0;
+      color: #fff;
+      background: rgba(255, 255, 255, 0.16);
+      transition: background .15s ease, transform .1s ease;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .top a[aria-label="Kembali"]:active {
+      background: rgba(255, 255, 255, 0.30);
+      transform: scale(0.94);
+    }
+
+    /* =========================================================
+       LOGO IHC
+       ========================================================= */
+    .radar-logo {
+      width: 96px;
+      height: 96px;
+      object-fit: contain;
+      display: block;
+      margin: 0 auto 14px;
+      border-radius: 50%;
+      background: var(--brand-blue-light);
+      padding: 14px;
+      box-shadow: 0 4px 14px rgba(27, 95, 170, 0.18);
+      animation: radarPulse 2.6s ease-in-out infinite;
+    }
+    @keyframes radarPulse {
+      0%, 100% { transform: scale(1);    box-shadow: 0 4px 14px rgba(27, 95, 170, 0.18); }
+      50%      { transform: scale(1.04); box-shadow: 0 6px 20px rgba(27, 95, 170, 0.30); }
+    }
+    @media (max-width: 480px) {
+      .radar-logo { width: 84px; height: 84px; padding: 12px; margin-bottom: 12px; }
+    }
+    @media (max-width: 360px) {
+      .radar-logo { width: 72px; height: 72px; padding: 10px; margin-bottom: 10px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .radar-logo { animation: none !important; }
+    }
+
+    /* =========================================================
+       TOMBOL FAB HOTLINE
+       ========================================================= */
+    .patient-float {
+      position: fixed;
+      right: calc(16px + var(--safe-right));
+      bottom: calc(20px + var(--safe-bottom));
+      z-index: 900;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .fab-help {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      border: none;
+      background: var(--brand-blue);
+      color: #fff;
+      font-size: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 4px 14px rgba(27, 95, 170, 0.4);
+      transition: background .15s ease, transform .1s ease;
+      -webkit-tap-highlight-color: transparent;
+      animation: helpPulse 2.4s ease-in-out infinite;
+    }
+    .fab-help:active {
+      background: var(--brand-blue-dark);
+      transform: scale(0.94);
+    }
+    @keyframes helpPulse {
+      0%, 100% { box-shadow: 0 4px 14px rgba(27, 95, 170, 0.40); }
+      50%      { box-shadow: 0 4px 20px rgba(27, 95, 170, 0.65); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .fab-help { animation: none !important; }
+    }
+
+    /* =========================================================
+       TOMBOL UTAMA (#toggle)
+       ========================================================= */
+    #toggle.btn.wide {
+      background: var(--brand-green);
+      color: #fff;
+      border: none;
+      border-radius: 14px;
+      font-weight: 700;
+      font-size: 16px;
+      min-height: 52px;
+      box-shadow: 0 3px 10px rgba(146, 200, 62, 0.35);
+      transition: background .15s ease, transform .1s ease, box-shadow .15s ease;
+      -webkit-tap-highlight-color: transparent;
+    }
+    #toggle.btn.wide:active {
+      background: var(--brand-green-dark);
+      transform: scale(0.98);
+      box-shadow: 0 2px 6px rgba(146, 200, 62, 0.45);
+    }
+    body.sharing #toggle.btn.wide {
+      background: var(--brand-green-dark);
+      box-shadow: 0 3px 12px rgba(122, 176, 46, 0.5);
+    }
+
+    /* =========================================================
+       INPUT
+       ========================================================= */
+    #name,
+    #priority {
+      font-size: 16px;
+      min-height: 48px;
+    }
+
+    /* =========================================================
+       FOCUS VISIBLE
+       ========================================================= */
+    #toggle.btn.wide:focus-visible,
+    .hotline-btn:focus-visible,
+    .fab-help:focus-visible,
+    .sched-alert-close:focus-visible,
+    .sched-alert-footer button:focus-visible,
+    .top a[aria-label="Kembali"]:focus-visible {
+      outline: 3px solid var(--focus-ring);
+      outline-offset: 2px;
+    }
+
+    /* =========================================================
+       OVERLAY SHARED
+       ========================================================= */
+    .sched-alert-overlay,
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      display: none;
+      align-items: flex-end;
+      justify-content: center;
+      padding: 0;
+      overscroll-behavior: contain;
+      -webkit-tap-highlight-color: transparent;
+      animation: fadeIn 0.2s ease;
+    }
+    .sched-alert-overlay.show,
+    .modal-overlay.show { display: flex; }
+    .sched-alert-overlay { z-index: 9999;  }
+    .modal-overlay       { z-index: 10000; }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
+    @keyframes schedSlideUpIOS {
+      from { transform: translateY(100%); }
+      to   { transform: translateY(0); }
+    }
+    @keyframes schedSlideUpAndroid {
+      from { transform: translateY(100%); }
+      to   { transform: translateY(0); }
+    }
+    @keyframes popIn {
+      from { transform: scale(0.94); opacity: 0; }
+      to   { transform: scale(1);    opacity: 1; }
+    }
+
+    /* =========================================================
+       MODAL BOX
+       ========================================================= */
+    .sched-alert-box,
+    .modal-box {
+      background: #fff;
+      width: 100%;
+      max-width: 100%;
+      border-radius: var(--radius-modal) var(--radius-modal) 0 0;
+      box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.22);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      overscroll-behavior: contain;
+      -webkit-backface-visibility: hidden;
+      backface-visibility: hidden;
+      max-height: 88dvh;
+      max-height: 88vh;
+      animation: var(--anim-slide);
+      padding: 8px calc(var(--pad-modal-x) + var(--safe-right))
+               calc(var(--pad-modal-y) + var(--safe-bottom))
+               calc(var(--pad-modal-x) + var(--safe-left));
+    }
+    .is-android .sched-alert-box,
+    .is-android .modal-box {
+      max-height: calc(var(--vh, 1vh) * 88);
+      will-change: transform;
+    }
+
+    .sched-alert-handle,
+    .modal-handle {
+      width: 40px;
+      height: 5px;
+      background: #d0d0d0;
+      border-radius: 3px;
+      margin: 6px auto 6px;
+      flex-shrink: 0;
+    }
+    .is-android .sched-alert-handle,
+    .is-android .modal-handle { height: 4px; background: #dcdcdc; }
+
+    /* =========================================================
+       MODAL NOTIFIKASI JADWAL BEROBAT
+       ========================================================= */
+    .sched-alert-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 6px 0 12px;
+      border-bottom: 1px dashed #e6e6e6;
+      flex-shrink: 0;
+    }
+    .sched-alert-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: var(--brand-blue-light);
+      color: var(--brand-blue);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      flex-shrink: 0;
+    }
+    .sched-alert-title { flex: 1; min-width: 0; }
+    .sched-alert-title h2 {
+      margin: 0;
+      font-size: 15px;
+      font-weight: 700;
+      color: #1a1a1a;
+      line-height: 1.25;
+    }
+    .sched-alert-title p {
+      margin: 3px 0 0;
+      font-size: 11.5px;
+      color: #777;
+      line-height: 1.35;
+    }
+    .sched-alert-close {
+      background: #f2f2f2;
+      border: none;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      font-size: 15px;
+      color: #666;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: background 0.15s ease, transform 0.1s ease;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .sched-alert-close:active {
+      background: #e0e0e0;
+      transform: scale(0.9);
+    }
+
+    .sched-alert-body {
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
+      margin-top: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding-right: 2px;
+      flex: 1 1 auto;
+      min-height: 0;
+      touch-action: pan-y;
+    }
+
+    .sched-alert-item {
+      background: var(--brand-green-light);
+      border: 1px solid #D9EAB8;
+      border-left: 4px solid var(--brand-green);
+      border-radius: 12px;
+      padding: 12px 12px 12px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      transform: translateZ(0);
+    }
+    .sched-alert-item .sa-top {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 2px;
+    }
+    .sched-alert-item .sa-name {
+      font-weight: 700;
+      font-size: 14px;
+      color: #1a1a1a;
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .sched-alert-item .sa-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 7px;
+      font-size: 12.5px;
+      color: #444;
+      line-height: 1.4;
+    }
+    .sched-alert-item .sa-row .ic {
+      font-size: 12px;
+      width: 16px;
+      text-align: center;
+      flex-shrink: 0;
+      line-height: 1.4;
+    }
+    .sched-alert-item .sa-note {
+      font-size: 12px;
+      color: #666;
+      font-style: italic;
+      margin-top: 3px;
+      padding-left: 23px;
+      line-height: 1.4;
+    }
+
+    .sa-badge {
+      display: inline-block;
+      padding: 3px 9px;
+      border-radius: 10px;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+      flex-shrink: 0;
+    }
+    .sa-badge.today    { background: var(--brand-green); color: #fff; }
+    .sa-badge.tomorrow { background: #FFA500; color: #fff; }
+    .sa-badge.upcoming { background: #e0e0e0; color: #444; }
+
+    .sched-alert-footer {
+      margin-top: 14px;
+      flex-shrink: 0;
+      padding-top: 12px;
+      border-top: 1px solid #f0f0f0;
+    }
+    .sched-alert-footer button {
+      width: 100%;
+      min-height: 48px;
+      padding: 12px 16px;
+      border-radius: 14px;
+      border: none;
+      background: var(--brand-blue);
+      color: #fff;
+      font-weight: 700;
+      font-size: 15.5px;
+      cursor: pointer;
+      transition: background 0.15s ease, transform 0.1s ease;
+      font-family: inherit;
+      -webkit-tap-highlight-color: transparent;
+      box-shadow: 0 2px 6px rgba(27, 95, 170, 0.25);
+    }
+    .sched-alert-footer button:active {
+      background: var(--brand-blue-dark);
+      transform: scale(0.98);
+      box-shadow: 0 1px 3px rgba(27, 95, 170, 0.3);
+    }
+
+    /* =========================================================
+       MODAL HOTLINE
+       ========================================================= */
+    .hotline-hero {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      padding: 4px 0 8px;
+    }
+    .hotline-icon {
+      width: 68px;
+      height: 68px;
+      border-radius: 50%;
+      background: var(--brand-blue-light);
+      color: var(--brand-blue);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+      margin-bottom: 10px;
+      box-shadow: 0 4px 14px rgba(27, 95, 170, 0.18);
+      animation: hotlinePulse 2s ease-in-out infinite;
+    }
+    @keyframes hotlinePulse {
+      0%, 100% { transform: scale(1);    box-shadow: 0 4px 14px rgba(27, 95, 170, 0.18); }
+      50%      { transform: scale(1.05); box-shadow: 0 6px 20px rgba(27, 95, 170, 0.30); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .hotline-icon { animation: none !important; }
+    }
+
+    .hotline-title {
+      margin: 0;
+      font-size: 15px;
+      font-weight: 700;
+      color: #1a1a1a;
+      line-height: 1.3;
+    }
+    .hotline-subtitle {
+      margin: 4px 0 0;
+      font-size: 12px;
+      color: #777;
+      line-height: 1.4;
+    }
+    .hotline-number {
+      display: block;
+      margin: 16px auto 4px;
+      font-size: 26px;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+      color: var(--brand-blue);
+      text-decoration: none;
+      text-align: center;
+      line-height: 1.1;
+      padding: 10px 14px;
+      border-radius: 12px;
+      background: var(--brand-blue-soft);
+      border: 1px dashed #B5CCE5;
+      word-break: break-word;
+      transition: background 0.15s ease, transform 0.1s ease;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .hotline-number:active {
+      background: var(--brand-blue-light);
+      transform: scale(0.98);
+    }
+    .hotline-note {
+      margin: 4px 0 0;
+      font-size: 11.5px;
+      color: #999;
+      text-align: center;
+      line-height: 1.4;
+    }
+
+    .hotline-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 16px;
+      flex-shrink: 0;
+      padding-top: 12px;
+      border-top: 1px solid #f0f0f0;
+    }
+    .hotline-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+      min-height: 50px;
+      padding: 12px 16px;
+      border-radius: 12px;
+      border: none;
+      font-weight: 700;
+      font-size: 15px;
+      cursor: pointer;
+      font-family: inherit;
+      text-decoration: none;
+      text-align: center;
+      transition: background .15s ease, transform .1s ease;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .hotline-btn:active { transform: scale(0.98); }
+
+    .hotline-btn.call {
+      background: var(--brand-blue);
+      color: #fff;
+      box-shadow: 0 2px 6px rgba(27, 95, 170, 0.25);
+    }
+    .hotline-btn.call:active { background: var(--brand-blue-dark); }
+
+    .hotline-btn.wa {
+      background: #25D366;
+      color: #fff;
+      box-shadow: 0 2px 6px rgba(37, 211, 102, 0.25);
+    }
+    .hotline-btn.wa:active { background: #1DA851; }
+
+    .hotline-btn.cancel {
+      background: #f2f2f2;
+      color: #444;
+      min-height: 44px;
+      font-weight: 600;
+      font-size: 14px;
+    }
+    .hotline-btn.cancel:active { background: #e0e0e0; }
+
+    .hotline-btn .btn-ic {
+      font-size: 18px;
+      line-height: 1;
+    }
+
+    /* =========================================================
+       RESPONSIVE
+       ========================================================= */
+    @media (min-width: 560px) {
+      .sched-alert-overlay,
+      .modal-overlay {
+        align-items: center;
+        padding: 20px;
+      }
+      .sched-alert-box,
+      .modal-box {
+        border-radius: 18px;
+        max-width: 440px;
+        max-height: 80vh;
+        padding: 18px 20px 22px;
+        animation: popIn 0.26s cubic-bezier(0.32, 0.72, 0, 1);
+      }
+      .modal-box { max-width: 420px; }
+      .sched-alert-handle,
+      .modal-handle { display: none; }
+    }
+
+    @media (max-width: 360px) {
+      .sched-alert-box,
+      .modal-box { padding-left: 12px; padding-right: 12px; }
+      .sched-alert-title h2 { font-size: 14px; }
+      .sched-alert-item .sa-name { font-size: 13px; }
+      .sched-alert-item .sa-row { font-size: 12px; }
+      .hotline-number { font-size: 22px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .sched-alert-overlay,
+      .modal-overlay,
+      .sched-alert-box,
+      .modal-box,
+      .sched-alert-item,
+      .sched-alert-footer button,
+      .hotline-btn,
+      .fab-help,
+      .radar-logo,
+      .hotline-icon {
+        animation: none !important;
+        transition: none !important;
+      }
+    }
+  </style>
+</head>
+<body class="solo">
+  <div class="wrap">
+    <header class="top">
+      <a href="index.html" aria-label="Kembali">←</a>
+    </header>
+
+    <main class="card">
+      <!-- ===== LOGO IHC ===== -->
+      <img
+        src="../assets/img/logo%20IHC%20RSPJ.png"
+        alt="RS Pelabuhan Jakarta"
+        class="radar-logo"
+        width="96" height="96"
+        onerror="this.outerHTML='<div class=\'radar\' aria-hidden=\'true\'>📍</div>'">
+      <!-- ===== /LOGO IHC ===== -->
+
+      <h1>Bagikan lokasi Anda</h1>
+      <p class="hint">Petugas akan melihat posisi Anda secara langsung selama tombol di bawah aktif.</p>
+
+      <label for="name">Nama pasien</label>
+      <input id="name" type="text" autocomplete="name" inputmode="text"
+             placeholder="Contoh: Budi Santoso">
+
+      <label for="priority">Tingkat prioritas</label>
+      <div class="sel">
+        <select id="priority">
+          <option value="merah">Merah - President Suite</option>
+          <option value="kuning">Kuning - VVIP Suite</option>
+          <option value="hijau">Hijau - VVIP</option>
+        </select>
+      </div>
+
+      <button id="toggle" class="btn wide" type="button">Mulai bagikan lokasi</button>
+      <p id="state" class="state" role="status" aria-live="polite">Lokasi belum dibagikan.</p>
+    </main>
+
+    <p class="note">
+      Anda bisa menghentikan berbagi lokasi kapan saja.<br>
+      <small style="opacity:.7;">RS Pelabuhan Jakarta — IHC RSPJ</small>
+    </p>
+  </div>
+
+  <!-- ====== TOMBOL FAB HOTLINE ====== -->
+  <div class="patient-float">
+    <button class="fab-help" type="button" aria-label="Panggil bantuan" id="helpBtn">📞</button>
+  </div>
+
+  <!-- ====== MODAL NOTIFIKASI JADWAL BEROBAT ====== -->
+  <div class="sched-alert-overlay" id="schedAlertOverlay" role="dialog" aria-modal="true" aria-labelledby="schedAlertTitle">
+    <div class="sched-alert-box">
+      <div class="sched-alert-handle" aria-hidden="true"></div>
+      <div class="sched-alert-header">
+        <div class="sched-alert-icon" aria-hidden="true">⏰</div>
+        <div class="sched-alert-title">
+          <h2 id="schedAlertTitle">Pengingat Jadwal Berobat</h2>
+          <p id="schedAlertSubtitle">Anda memiliki jadwal berobat dalam waktu dekat.</p>
+        </div>
+        <button type="button" class="sched-alert-close" id="schedAlertClose" aria-label="Tutup">✕</button>
+      </div>
+      <div class="sched-alert-body" id="schedAlertBody"></div>
+      <div class="sched-alert-footer">
+        <button type="button" id="schedAlertOk">Mengerti</button>
+      </div>
+    </div>
+  </div>
+  <!-- ====== /MODAL NOTIFIKASI JADWAL BEROBAT ====== -->
+
+  <!-- ====== MODAL HOTLINE ====== -->
+  <div class="modal-overlay" id="hotlineModal" role="dialog" aria-modal="true" aria-labelledby="hotlineTitle">
+    <div class="modal-box">
+      <div class="modal-handle" aria-hidden="true"></div>
+
+      <div class="hotline-hero">
+        <div class="hotline-icon" aria-hidden="true">📞</div>
+        <h2 class="hotline-title" id="hotlineTitle">Panggil Bantuan</h2>
+        <p class="hotline-subtitle">Hubungi hotline <b>RS Pelabuhan Jakarta</b> untuk bantuan darurat atau informasi.</p>
+
+        <a class="hotline-number" id="hotlineNumber" href="tel:+62214300000">021-4300000</a>
+        <p class="hotline-note" id="hotlineNote">Tersedia 24 jam · Tekan nomor untuk menelepon</p>
+      </div>
+
+      <div class="hotline-actions">
+        <a class="hotline-btn call" id="hotlineCallBtn" href="tel:+62214300000">
+          <span class="btn-ic" aria-hidden="true">📞</span>
+          <span>Telepon Sekarang</span>
+        </a>
+
+        <a class="hotline-btn wa" id="hotlineWaBtn"
+           href="https://wa.me/6281234567890"
+           target="_blank" rel="noopener">
+          <span class="btn-ic" aria-hidden="true">💬</span>
+          <span>Chat WhatsApp</span>
+        </a>
+
+        <button type="button" class="hotline-btn cancel" id="hotlineCancel">Batal</button>
+      </div>
+    </div>
+  </div>
+  <!-- ====== /MODAL HOTLINE ====== -->
+
+  <script src="../config.php"></script>
+  <script src="../js/transport.js"></script>
+  <script src="../js/patient.js"></script>
+
+  <script>
+    (function () {
+      'use strict';
+
+      /* =========================================================
+         0. KONFIGURASI HOTLINE
+         ========================================================= */
+      var HOSPITAL = {
+        name: 'RS Pelabuhan Jakarta',
+        hotlineE164: '+62214300000',
+        hotlineDisplay: '021-4300000',
+        whatsappE164: '6281234567890',
+        availableText: 'Tersedia 24 jam · Tekan nomor untuk menelepon'
+      };
+
+      /* =========================================================
+         1. DETEKSI PLATFORM
+         ========================================================= */
+      var ua = navigator.userAgent || '';
+      var platform = navigator.platform || '';
+      var maxTouch = navigator.maxTouchPoints || 0;
+
+      var isIOS = /iPad|iPhone|iPod/.test(ua) ||
+                  (platform === 'MacIntel' && maxTouch > 1);
+      var isAndroid = /Android/i.test(ua);
+
+      var rootEl = document.documentElement;
+      if (isIOS)          rootEl.classList.add('is-ios');
+      else if (isAndroid) rootEl.classList.add('is-android');
+      else                rootEl.classList.add('is-desktop');
+
+      window.__PLATFORM__ = isIOS ? 'ios' : isAndroid ? 'android' : 'other';
+
+      var $ = function (id) { return document.getElementById(id); };
+      var colors = { merah: '#dc2626', kuning: '#f59e0b', Hijau: '#00FF00' };
+
+      /* =========================================================
+         2. READY HELPER
+         ========================================================= */
+      function ready(fn) {
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', fn, { once: true });
+        } else {
+          fn();
+        }
+      }
+
+      /* =========================================================
+         3. UI DASAR — prioritas & state button
+         ========================================================= */
+      var pr = $('priority');
+      function paint() {
+        document.documentElement.style.setProperty('--pc', colors[pr.value] || '#1B5FAA');
+      }
+      pr.addEventListener('change', paint);
+      paint();
+
+      var btn = $('toggle'), st = $('state');
+      function sync() {
+        var t = (btn.textContent + ' ' + st.textContent).toLowerCase();
+        var on = /berhenti|hentikan|stop/.test(btn.textContent.toLowerCase()) ||
+                (/sedang|dibagikan ke|aktif|live/.test(st.textContent.toLowerCase()) && !/belum|tidak|dihentikan/.test(t));
+        document.body.classList.toggle('sharing', on);
+      }
+      if (window.MutationObserver) {
+        var mo = new MutationObserver(sync);
+        mo.observe(btn, { childList: true, characterData: true, subtree: true, attributes: true });
+        mo.observe(st,  { childList: true, characterData: true, subtree: true });
+      }
+      sync();
+
+      /* =========================================================
+         4. VIEWPORT FIX — Android (keyboard aware)
+         ========================================================= */
+      if (isAndroid) {
+        var setVH = function () {
+          document.documentElement.style.setProperty('--vh', (window.innerHeight * 0.01) + 'px');
+        };
+        setVH();
+        window.addEventListener('resize', setVH);
+        window.addEventListener('orientationchange', function () { setTimeout(setVH, 200); });
+
+        if (window.visualViewport) {
+          var onVV = function () {
+            var vv = window.visualViewport;
+            if (vv.height < window.innerHeight * 0.75) {
+              document.documentElement.style.setProperty('--vh', (vv.height * 0.01) + 'px');
+            } else {
+              setVH();
+            }
+          };
+          window.visualViewport.addEventListener('resize', onVV);
+          window.visualViewport.addEventListener('scroll', onVV);
+        }
+      }
+
+      /* =========================================================
+         5. SCROLL LOCK ADAPTIVE
+         ========================================================= */
+      var lockCount = 0;
+      var savedScrollY = 0;
+      var prevBodyStyle = {};
+
+      function lockBody() {
+        lockCount++;
+        if (lockCount > 1) return;
+
+        if (isIOS) {
+          savedScrollY = window.scrollY || window.pageYOffset || 0;
+          prevBodyStyle = {
+            position: document.body.style.position,
+            top:      document.body.style.top,
+            width:    document.body.style.width,
+            overflow: document.body.style.overflow
+          };
+          document.body.style.position = 'fixed';
+          document.body.style.top      = -savedScrollY + 'px';
+          document.body.style.width    = '100%';
+          document.body.style.overflow = 'hidden';
+        } else {
+          prevBodyStyle = { overflow: document.body.style.overflow };
+          document.body.style.overflow = 'hidden';
+        }
+      }
+
+      function unlockBody() {
+        lockCount = Math.max(0, lockCount - 1);
+        if (lockCount > 0) return;
+
+        if (isIOS) {
+          document.body.style.position = prevBodyStyle.position || '';
+          document.body.style.top      = prevBodyStyle.top || '';
+          document.body.style.width    = prevBodyStyle.width || '';
+          document.body.style.overflow = prevBodyStyle.overflow || '';
+          window.scrollTo(0, savedScrollY || 0);
+        } else {
+          document.body.style.overflow = prevBodyStyle.overflow || '';
+        }
+      }
+
+      window.addEventListener('pagehide', function () {
+        lockCount = 0;
+        document.body.style.position = '';
+        document.body.style.top = '';
+        document.body.style.width = '';
+        document.body.style.overflow = '';
+      });
+
+      /* =========================================================
+         6. MODAL HOTLINE
+         ========================================================= */
+      var hotlineNumberEl = $('hotlineNumber');
+      var hotlineCallBtn  = $('hotlineCallBtn');
+      var hotlineWaBtn    = $('hotlineWaBtn');
+      var hotlineNoteEl   = $('hotlineNote');
+
+      if (hotlineNumberEl) {
+        hotlineNumberEl.textContent = HOSPITAL.hotlineDisplay;
+        hotlineNumberEl.setAttribute('href', 'tel:' + HOSPITAL.hotlineE164);
+      }
+      if (hotlineCallBtn) {
+        hotlineCallBtn.setAttribute('href', 'tel:' + HOSPITAL.hotlineE164);
+      }
+      if (hotlineWaBtn) {
+        var waText = encodeURIComponent('Halo, saya butuh bantuan di ' + HOSPITAL.name + '.');
+        hotlineWaBtn.setAttribute('href',
+          'https://wa.me/' + HOSPITAL.whatsappE164 + '?text=' + waText);
+      }
+      if (hotlineNoteEl) {
+        hotlineNoteEl.textContent = HOSPITAL.availableText;
+      }
+
+      var hotlineModal = $('hotlineModal');
+      var hotlineOpen = false;
+      var hotlinePushedHistory = false;
+
+      function openHotline() {
+        if (hotlineOpen) return;
+        if (schedOpen) closeSchedModal();
+        hotlineOpen = true;
+        lockBody();
+        hotlineModal.classList.add('show');
+
+        if (isAndroid) {
+          try {
+            history.pushState({ modal: 'hotline' }, '');
+            hotlinePushedHistory = true;
+          } catch (e) {}
+        }
+      }
+
+      function closeHotline() {
+        if (!hotlineOpen) return;
+        hotlineOpen = false;
+        hotlineModal.classList.remove('show');
+        unlockBody();
+
+        if (isAndroid && hotlinePushedHistory) {
+          hotlinePushedHistory = false;
+          try { history.back(); } catch (e) {}
+        }
+      }
+
+      var helpBtn = $('helpBtn');
+      if (helpBtn) helpBtn.addEventListener('click', openHotline);
+
+      $('hotlineCancel').addEventListener('click', closeHotline);
+      hotlineModal.addEventListener('click', function (e) {
+        if (e.target === hotlineModal) closeHotline();
+      });
+
+      /* =========================================================
+         7. NOTIFIKASI JADWAL BEROBAT
+         ========================================================= */
+      var STORAGE_KEY = 'jadwal_berobat_pasien';
+      var overlay  = $('schedAlertOverlay');
+      var bodyEl   = $('schedAlertBody');
+      var subEl    = $('schedAlertSubtitle');
+      var closeBtn = $('schedAlertClose');
+      var okBtn    = $('schedAlertOk');
+
+      var schedOpen = false;
+      var schedPushedHistory = false;
+
+      function getSchedules() {
+        try {
+          var raw = localStorage.getItem(STORAGE_KEY);
+          return raw ? JSON.parse(raw) : [];
+        } catch (e) { return []; }
+      }
+
+      function formatTanggal(isoDate) {
+        if (!isoDate) return '-';
+        var d = new Date(isoDate + 'T00:00:00');
+        if (isNaN(d.getTime())) return isoDate;
+        var hari  = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
+        var bulan = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+        return hari[d.getDay()] + ', ' + d.getDate() + ' ' +
+               bulan[d.getMonth()] + ' ' + d.getFullYear();
+      }
+
+      function diffDays(isoDate) {
+        if (!isoDate) return null;
+        var today = new Date(); today.setHours(0,0,0,0);
+        var target = new Date(isoDate + 'T00:00:00');
+        if (isNaN(target.getTime())) return null;
+        return Math.round((target - today) / (1000*60*60*24));
+      }
+
+      function getBadge(diff) {
+        if (diff === 0) return { cls: 'today',    text: 'Hari Ini' };
+        if (diff === 1) return { cls: 'tomorrow', text: 'Besok' };
+        return { cls: 'upcoming', text: diff + ' hari lagi' };
+      }
+
+      function openSchedModal() {
+        if (schedOpen) return;
+        if (hotlineOpen) closeHotline();
+        schedOpen = true;
+        lockBody();
+        overlay.classList.add('show');
+
+        if (isAndroid) {
+          try {
+            history.pushState({ modal: 'sched' }, '');
+            schedPushedHistory = true;
+          } catch (e) {}
+        }
+      }
+
+      function closeSchedModal() {
+        if (!schedOpen) return;
+        schedOpen = false;
+        overlay.classList.remove('show');
+        unlockBody();
+
+        if (isAndroid && schedPushedHistory) {
+          schedPushedHistory = false;
+          try { history.back(); } catch (e) {}
+        }
+      }
+
+      if (isAndroid) {
+        window.addEventListener('popstate', function () {
+          if (hotlineOpen) {
+            hotlineOpen = false;
+            hotlineModal.classList.remove('show');
+            unlockBody();
+            hotlinePushedHistory = false;
+          } else if (schedOpen) {
+            schedOpen = false;
+            overlay.classList.remove('show');
+            unlockBody();
+            schedPushedHistory = false;
+          }
+        });
+      }
+
+      closeBtn.addEventListener('click', closeSchedModal);
+      okBtn.addEventListener('click', closeSchedModal);
+      overlay.addEventListener('click', function (e) {
+        if (e.target === overlay) closeSchedModal();
+      });
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') {
+          if (schedOpen)   closeSchedModal();
+          if (hotlineOpen) closeHotline();
+        }
+      });
+
+      function makeRow(icon, text) {
+        var row = document.createElement('div');
+        row.className = 'sa-row';
+        var ic = document.createElement('span');
+        ic.className = 'ic';
+        ic.textContent = icon;
+        var tx = document.createElement('span');
+        tx.textContent = text;
+        row.appendChild(ic);
+        row.appendChild(tx);
+        return row;
+      }
+
+      function showScheduleAlert(schedules) {
+        if (!schedules.length) return;
+
+        schedules.sort(function (a, b) {
+          var da = (a.date || '') + ' ' + (a.time || '');
+          var db = (b.date || '') + ' ' + (b.time || '');
+          return da.localeCompare(db);
+        });
+
+        var upcoming = schedules.filter(function (item) {
+          var diff = diffDays(item.date);
+          return diff !== null && diff >= 0 && diff <= 7;
+        });
+        if (!upcoming.length) return;
+
+        bodyEl.innerHTML = '';
+        upcoming.forEach(function (item) {
+          var diff  = diffDays(item.date);
+          var badge = getBadge(diff);
+
+          var card = document.createElement('div');
+          card.className = 'sched-alert-item';
+
+          var topRow = document.createElement('div');
+          topRow.className = 'sa-top';
+          var nameEl = document.createElement('span');
+          nameEl.className = 'sa-name';
+          nameEl.textContent = item.name || 'Pasien';
+          var badgeEl = document.createElement('span');
+          badgeEl.className = 'sa-badge ' + badge.cls;
+          badgeEl.textContent = badge.text;
+          topRow.appendChild(nameEl);
+          topRow.appendChild(badgeEl);
+          card.appendChild(topRow);
+
+          card.appendChild(makeRow('📆', formatTanggal(item.date)));
+          card.appendChild(makeRow('⏰', item.time  || '-'));
+          card.appendChild(makeRow('🏥', item.place || '-'));
+
+          if (item.note) {
+            var noteEl = document.createElement('div');
+            noteEl.className = 'sa-note';
+            noteEl.textContent = '📝 ' + item.note;
+            card.appendChild(noteEl);
+          }
+          bodyEl.appendChild(card);
+        });
+
+        subEl.textContent = 'Anda memiliki ' + upcoming.length +
+                            ' jadwal berobat dalam 7 hari ke depan.';
+
+        setTimeout(openSchedModal, 600);
+      }
+
+      function checkSchedulesForPatient() {
+        var nameInput = $('name');
+        var name = nameInput ? nameInput.value.trim().toLowerCase() : '';
+        var all = getSchedules();
+        if (!all.length) return;
+
+        var filtered = name
+          ? all.filter(function (item) {
+              return (item.name || '').toLowerCase().indexOf(name) !== -1;
+            })
+          : all;
+
+        if (filtered.length) showScheduleAlert(filtered);
+      }
+
+      ready(function () { checkSchedulesForPatient(); });
+
+      var nameEl = $('name');
+      if (nameEl) {
+        var debounceTimer;
+        nameEl.addEventListener('input', function () {
+          clearTimeout(debounceTimer);
+          debounceTimer = setTimeout(function () {
+            var name = nameEl.value.trim();
+            if (name.length >= 3) checkSchedulesForPatient();
+          }, 800);
+        });
+      }
+
+      window.addEventListener('storage', function (e) {
+        if (e.key === STORAGE_KEY) checkSchedulesForPatient();
+      });
+
+      /* =========================================================
+         8. TRANSPORT + WATCH GEOLOKASI (realtime kirim ke server)
+         =========================================================
+         Alur:
+         - Buat transport (WebSocket atau BroadcastChannel).
+         - Saat tombol "Mulai bagikan lokasi" ditekan:
+             * Minta izin lokasi (allow)
+             * Aktifkan watchPosition()
+             * Kirim update berkala / saat berpindah > 10 m
+         - Saat tombol ditekan lagi / halaman ditutup:
+             * clearWatch()
+             * Kirim pesan "stop"
+             * transport.close()
+         ========================================================= */
+
+      var transport = null;
+      var watchId   = null;
+      var lastLat   = null;
+      var lastLng   = null;
+      var lastSent  = 0;
+
+      var SEND_EVERY_MS = 5000;   // minimal 5 detik antar kirim
+      var MIN_MOVE_M    = 10;     // kirim kalau geser > 10 meter
+
+      /* Inisialisasi transport begitu DOM siap */
+      ready(function () {
+        if (typeof createTransport !== 'function') {
+          // transport.js tidak ter-load — tetap bisa jalan, tapi hanya lokal
+          return;
+        }
+
+        transport = createTransport(
+          function (msg) {
+            // Pesan dari server / tab lain (jarang dipakai di sisi pasien)
+            if (!msg || typeof msg !== 'object') return;
+            // Contoh: server menyuruh stop
+            if (msg.type === 'stop-share') {
+              stopSharing();
+            }
+          },
+          function (state) {
+            // state: "online" | "offline" | "demo" | "error" | "unsupported"
+            if (state === 'offline') {
+              var s = $('state');
+              if (s && document.body.classList.contains('sharing')) {
+                s.textContent = 'Koneksi terputus, mencoba ulang…';
+              }
+            }
+          }
+        );
+
+        // Bersihkan saat halaman ditutup
+        window.addEventListener('pagehide', function () {
+          if (watchId !== null) {
+            try { navigator.geolocation.clearWatch(watchId); } catch (e) {}
+            watchId = null;
+          }
+          if (transport) {
+            try {
+              transport.send({
+                type: 'location-stop',
+                id: getPatientId(),
+                name: getName(),
+                ts: Date.now()
+              });
+            } catch (e) {}
+            try { transport.close(); } catch (e) {}
+          }
+        });
+      });
+
+      /* ---------- Helper: ambil identitas pasien ---------- */
+      function getName() {
+        var el = $('name');
+        return el ? el.value.trim() : '';
+      }
+      function getPriority() {
+        var el = $('priority');
+        return el ? el.value : 'Hijau';
+      }
+      function getPatientId() {
+        var n = getName();
+        // ID sederhana berbasis nama + device-id; sesuaikan bila ada backend
+        return n ? n.toLowerCase().replace(/\s+/g, '-') : 'anon';
+      }
+
+      /* ---------- Haversine: jarak dalam meter ---------- */
+      function distanceMeters(lat1, lng1, lat2, lng2) {
+        var R = 6371000;
+        var toRad = function (d) { return d * Math.PI / 180; };
+        var dLat = toRad(lat2 - lat1);
+        var dLng = toRad(lng2 - lng1);
+        var a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+                Math.sin(dLng/2) * Math.sin(dLng/2);
+        return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      }
+
+      /* ---------- Kirim satu posisi ke server ---------- */
+      function sendLocation(pos) {
+        if (!transport) return;
+
+        var payload = {
+          type: 'location',
+          id: getPatientId(),
+          name: getName(),
+          priority: getPriority(),
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude,
+          accuracy: pos.coords.accuracy,
+          heading: pos.coords.heading,
+          speed: pos.coords.speed,
+          ts: Date.now()
+        };
+
+        transport.send(payload);
+
+        // Simpan juga ke localStorage — supaya dashboard bisa baca
+        // kalau backend belum siap (mode demo / offline).
+        try {
+          var KEY = 'pasien_lokasi_live';
+          var arr = JSON.parse(localStorage.getItem(KEY) || '[]');
+          var idx = -1;
+          for (var i = 0; i < arr.length; i++) {
+            if ((arr[i].id || '') === payload.id) { idx = i; break; }
+          }
+          if (idx >= 0) arr[idx] = payload; else arr.push(payload);
+          // Batasi 100 entri terakhir
+          if (arr.length > 100) arr = arr.slice(arr.length - 100);
+          localStorage.setItem(KEY, JSON.stringify(arr));
+        } catch (e) {}
+      }
+
+      /* ---------- Callback watchPosition ---------- */
+      function onWatchSuccess(pos) {
+        var lat = pos.coords.latitude;
+        var lng = pos.coords.longitude;
+        var acc = pos.coords.accuracy;
+        var now = Date.now();
+
+        var moved = (lastLat == null)
+          ? Infinity
+          : distanceMeters(lastLat, lastLng, lat, lng);
+
+        // Kirim kalau: pertama kali, sudah >5 dtk, atau geser >10 m
+        if (moved > MIN_MOVE_M || (now - lastSent) > SEND_EVERY_MS) {
+          lastLat  = lat;
+          lastLng  = lng;
+          lastSent = now;
+          sendLocation(pos);
+        }
+
+        // Update state UI
+        var s = $('state');
+        if (s) {
+          s.textContent = 'Lokasi dibagikan — ' +
+            lat.toFixed(5) + ', ' + lng.toFixed(5) +
+            ' (±' + Math.round(acc) + ' m)';
+        }
+      }
+
+      function onWatchError(err) {
+        var s = $('state');
+        var msg = '⚠ Gagal melacak lokasi.';
+        switch (err.code) {
+          case err.PERMISSION_DENIED:
+            msg = '⚠ Izin lokasi ditolak. Aktifkan izin lokasi di pengaturan browser.';
+            break;
+          case err.POSITION_UNAVAILABLE:
+            msg = '⚠ Informasi lokasi tidak tersedia.';
+            break;
+          case err.TIMEOUT:
+            msg = '⚠ Waktu permintaan lokasi habis. Coba lagi.';
+            break;
+        }
+        if (s) s.textContent = msg;
+
+        // Kalau izin ditolak, matikan mode sharing
+        if (err.code === err.PERMISSION_DENIED) {
+          stopSharing();
+        }
+      }
+
+      /* ---------- Mulai / berhenti berbagi ---------- */
+      function startSharing() {
+        if (!('geolocation' in navigator)) {
+          var s = $('state');
+          if (s) s.textContent = '⚠ Browser tidak mendukung Geolocation.';
+          return;
+        }
+
+        // Reset state
+        lastLat = null;
+        lastLng = null;
+        lastSent = 0;
+
+        // Update UI: tombol jadi "Berhenti"
+        btn.textContent = 'Berhenti bagikan lokasi';
+        st.textContent = 'Meminta izin lokasi…';
+        document.body.classList.add('sharing');
+
+        // Ambil posisi awal sekali (biar cepat muncul)
+        navigator.geolocation.getCurrentPosition(
+          onWatchSuccess,
+          onWatchError,
+          { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+        );
+
+        // Aktifkan watchPosition untuk update selanjutnya
+        try {
+          watchId = navigator.geolocation.watchPosition(
+            onWatchSuccess,
+            onWatchError,
+            {
+              enableHighAccuracy: true,
+              timeout: 20000,
+              maximumAge: 3000
+            }
+          );
+        } catch (e) {
+          var s2 = $('state');
+          if (s2) s2.textContent = '⚠ Tidak bisa mengaktifkan pelacakan.';
+        }
+      }
+
+      function stopSharing() {
+        if (watchId !== null) {
+          try { navigator.geolocation.clearWatch(watchId); } catch (e) {}
+          watchId = null;
+        }
+
+        // Kirim sinyal berhenti
+        if (transport) {
+          try {
+            transport.send({
+              type: 'location-stop',
+              id: getPatientId(),
+              name: getName(),
+              ts: Date.now()
+            });
+          } catch (e) {}
+        }
+
+        // Hapus dari localStorage
+        try {
+          var KEY = 'pasien_lokasi_live';
+          var arr = JSON.parse(localStorage.getItem(KEY) || '[]');
+          var pid = getPatientId();
+          arr = arr.filter(function (x) { return (x.id || '') !== pid; });
+          localStorage.setItem(KEY, JSON.stringify(arr));
+        } catch (e) {}
+
+        // Reset state
+        lastLat = null;
+        lastLng = null;
+        lastSent = 0;
+
+        // Update UI
+        btn.textContent = 'Mulai bagikan lokasi';
+        st.textContent = 'Lokasi belum dibagikan.';
+        document.body.classList.remove('sharing');
+      }
+
+      /* ---------- Event: tombol toggle ---------- */
+      btn.addEventListener('click', function () {
+        var sharing = document.body.classList.contains('sharing');
+        if (sharing) {
+          stopSharing();
+        } else {
+          if (!getName()) {
+            alert('Isi nama pasien terlebih dahulu.');
+            $('name').focus();
+            return;
+          }
+          startSharing();
+        }
+      });
+
+      /* ---------- Event: nama berubah saat sharing ---------- */
+      if (nameEl) {
+        nameEl.addEventListener('change', function () {
+          if (document.body.classList.contains('sharing')) {
+            // Kirim ulang info pasien terbaru (tanpa ubah koordinat)
+            if (transport) {
+              transport.send({
+                type: 'patient-info',
+                id: getPatientId(),
+                name: getName(),
+                priority: getPriority(),
+                ts: Date.now()
+              });
+            }
+          }
+        });
+      }
+
+      /* ---------- Event: prioritas berubah saat sharing ---------- */
+      pr.addEventListener('change', function () {
+        if (document.body.classList.contains('sharing') && transport) {
+          transport.send({
+            type: 'patient-info',
+            id: getPatientId(),
+            name: getName(),
+            priority: getPriority(),
+            ts: Date.now()
+          });
+        }
+      });
+
+    })();
+  </script>
+</body>
+</html>

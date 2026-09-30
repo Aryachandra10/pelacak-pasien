@@ -1,0 +1,1061 @@
+/* patient.css — tema mobile ala Gojek untuk patient.html
+   Dimuat SETELAH css/style.css agar menimpa gaya lama.
+   =========================================================
+   STRUKTUR FILE:
+    0.  Palet Brand IHC RSPJ + Prioritas Pasien
+    1.  Variabel & Reset
+    2.  Layout Dasar (.wrap, .top, .card)
+    3.  Logo Radar / IHC
+    4.  Form (label, input, select)
+    5.  Tombol Utama
+    6.  Status & Catatan
+    7.  FAB Hotline
+    8.  Design Tokens Adaptif (iOS / Android)
+    9.  Overlay Shared (sched + hotline + confirm)
+   10.  Modal Box Shared
+   11.  Modal Notifikasi Jadwal Berobat
+   12.  Modal Hotline
+   13.  Modal Konfirmasi Lokasi (confirm-*)
+   14.  Focus Visible (aksesibilitas)
+   15.  Responsive (Tablet/Desktop & Layar Kecil)
+   16.  Reduced Motion
+   17.  Prioritas Pasien — warna profesional baru
+   ========================================================= */
+
+/* =========================================================
+   0. PALET BRAND IHC RSPJ + PRIORITAS PASIEN
+   ========================================================= */
+:root {
+  /* Hijau utama — tema Gojek/IHC */
+  --g:                 #00AA13;
+  --gd:                #008a0f;
+  --g-light:           #e8f8ea;
+
+  /* Netral */
+  --ink:               #1c1c1e;
+  --mut:               #6b7280;
+  --line:              #e5e7eb;
+  --pc:                #0EA5E9;  /* default: VVIP */
+
+  /* Biru IHC (brand sekunder) */
+  --brand-blue:        #1B5FAA;
+  --brand-blue-dark:   #144A87;
+  --brand-blue-light:  #E6EEF8;
+  --brand-blue-soft:   #F2F7FC;
+
+  /* Prioritas — palet profesional */
+  --prio-president:       #E11D48;   /* Crimson premium */
+  --prio-president-dark:  #BE123C;
+  --prio-president-gold:  #FBBF24;
+  --prio-president-light: #FEE2E2;
+
+  --prio-vvip-suite:        #9333EA; /* Ungu royal */
+  --prio-vvip-suite-dark:   #7E22CE;
+  --prio-vvip-suite-light:  #F3E8FF;
+
+  --prio-vvip:              #0EA5E9; /* Biru langit */
+  --prio-vvip-dark:         #0284C7;
+  --prio-vvip-light:        #E0F2FE;
+
+  /* Aksesibilitas */
+  --focus-ring:        #FFD54F;
+
+  /* Design tokens adaptif */
+  --radius-modal:      20px;
+  --radius-card:       14px;
+  --pad-modal-x:       16px;
+  --pad-modal-y:       16px;
+  --anim-slide:        schedSlideUpAndroid 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+  --font-stack:        system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --safe-top:          env(safe-area-inset-top, 0px);
+  --safe-bottom:       env(safe-area-inset-bottom, 0px);
+  --safe-left:         env(safe-area-inset-left, 0px);
+  --safe-right:        env(safe-area-inset-right, 0px);
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body {
+  min-height: 100%;
+  margin: 0;
+  font-family: var(--font-stack);
+  color: var(--ink);
+  background: #e5e7eb;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overscroll-behavior-y: contain;
+}
+
+body.solo {
+  display: block !important;
+  padding: 0 !important;
+  background: #e5e7eb !important;
+  color: var(--ink) !important;
+  min-height: 100vh;
+}
+
+/* =========================================================
+   1. LAYOUT DASAR (.wrap, .top, .card)
+   ========================================================= */
+.wrap {
+  position: relative;
+  min-height: 100vh;
+  max-width: 480px;
+  margin: 0 auto;
+  background: #f3f4f6;
+  box-shadow: 0 0 30px rgba(0, 0, 0, .15);
+  display: flex;
+  flex-direction: column;
+}
+
+/* Header biru IHC + tombol kembali */
+.top {
+  background: var(--brand-blue);
+  color: #fff;
+  padding: calc(env(safe-area-inset-top, 0px) + 12px)
+           calc(env(safe-area-inset-right, 0px) + 16px)
+           64px
+           calc(env(safe-area-inset-left, 0px) + 16px);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-radius: 0;
+  box-shadow: 0 2px 10px rgba(27, 95, 170, 0.25);
+}
+
+.top a[aria-label="Kembali"] {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  font-size: 20px;
+  line-height: 1;
+  text-decoration: none;
+  flex-shrink: 0;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.16);
+  transition: background .15s ease, transform .1s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.top a[aria-label="Kembali"]:active {
+  background: rgba(255, 255, 255, 0.30);
+  transform: scale(0.94);
+}
+
+.top b { font-size: 17px; }
+
+/* Kartu utama menumpuk di atas header */
+.card {
+  position: relative;
+  margin: -48px 14px 0;
+  background: #fff;
+  border-radius: 20px;
+  padding: 22px 18px 20px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .12);
+  max-width: none;
+  width: auto;
+}
+
+.card h1 {
+  margin: 0 0 6px;
+  font-size: 20px;
+  text-align: center;
+  color: var(--ink) !important;
+}
+
+.hint { margin: 0 0 18px; font-size: 13.5px; line-height: 1.5; }
+.card .hint { text-align: center; color: var(--mut) !important; }
+
+/* =========================================================
+   2. LOGO RADAR / IHC
+   ========================================================= */
+.radar {
+  position: relative;
+  width: 76px;
+  height: 76px;
+  margin: -52px auto 14px;
+  border-radius: 50%;
+  background: var(--g-light);
+  display: grid;
+  place-items: center;
+  font-size: 32px;
+  border: 5px solid #fff;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, .12);
+}
+
+.radar::after {
+  content: "";
+  position: absolute;
+  inset: -5px;
+  border-radius: 50%;
+  border: 2px solid var(--g);
+  opacity: 0;
+}
+
+body.sharing .radar::after { animation: ping 1.6s ease-out infinite; }
+
+@keyframes ping {
+  0%   { transform: scale(.9); opacity: .8; }
+  100% { transform: scale(1.7); opacity: 0; }
+}
+
+/* Logo IHC */
+.radar-logo {
+  width: 96px;
+  height: 96px;
+  object-fit: contain;
+  display: block;
+  margin: -52px auto 14px;
+  border-radius: 50%;
+  background: var(--brand-blue-light);
+  padding: 14px;
+  box-shadow: 0 4px 14px rgba(27, 95, 170, 0.18);
+  border: 5px solid #fff;
+  animation: radarPulse 2.6s ease-in-out infinite;
+}
+
+@keyframes radarPulse {
+  0%, 100% { transform: scale(1);    box-shadow: 0 4px 14px rgba(27, 95, 170, 0.18); }
+  50%      { transform: scale(1.04); box-shadow: 0 6px 20px rgba(27, 95, 170, 0.30); }
+}
+
+@media (max-width: 480px) {
+  .radar-logo { width: 84px; height: 84px; padding: 12px; margin-bottom: 12px; }
+}
+@media (max-width: 360px) {
+  .radar-logo { width: 72px; height: 72px; padding: 10px; margin-bottom: 10px; }
+}
+
+/* =========================================================
+   3. FORM (label, input, select)
+   ========================================================= */
+label {
+  display: block;
+  margin: 14px 0 6px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--mut);
+  text-transform: uppercase;
+  letter-spacing: .03em;
+}
+.card label { color: var(--mut) !important; }
+
+input, select {
+  width: 100%;
+  height: 50px;
+  padding: 0 14px;
+  font: 500 16px inherit;
+  font-family: inherit;
+  color: var(--ink);
+  background: #f9fafb;
+  border: 1.5px solid var(--line);
+  border-radius: 12px;
+  outline: 0;
+  appearance: none;
+  -webkit-appearance: none;
+  transition: border-color .15s ease, background .15s ease;
+}
+
+input:focus, select:focus {
+  border-color: var(--g);
+  background: #fff;
+}
+
+.card input, .card select {
+  background: #f9fafb !important;
+  color: var(--ink) !important;
+  border: 1.5px solid var(--line) !important;
+}
+.card input:focus, .card select:focus {
+  background: #fff !important;
+  border-color: var(--g) !important;
+}
+
+#name, #priority {
+  font-size: 16px;
+  min-height: 48px;
+}
+
+.sel { position: relative; }
+
+.sel::before {
+  content: "";
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  width: 12px;
+  height: 12px;
+  margin-top: -6px;
+  border-radius: 50%;
+  background: var(--pc);
+  z-index: 1;
+}
+
+.sel::after {
+  content: "▾";
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--mut);
+  pointer-events: none;
+}
+
+.sel select { padding-left: 36px; }
+
+/* =========================================================
+   4. TOMBOL UTAMA — warna dinamis via --pc
+   ========================================================= */
+#toggle, .btn.wide {
+  display: block;
+  width: 100%;
+  height: 52px;
+  margin-top: 22px;
+  border: 0;
+  border-radius: 99px;
+  background: var(--pc);
+  color: #fff;
+  font: 700 16px inherit;
+  font-family: inherit;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, .18);
+  cursor: pointer;
+  transition: background .2s, transform .1s, box-shadow .15s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#toggle:active {
+  filter: brightness(0.9);
+  transform: scale(0.98);
+}
+
+body.sharing #toggle {
+  filter: brightness(0.9);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, .28);
+}
+
+/* Aksen emas khusus President Suite */
+body[data-priority="president"] #toggle {
+  box-shadow:
+    0 0 0 2px var(--prio-president-gold) inset,
+    0 4px 12px rgba(225, 29, 72, 0.35);
+}
+
+/* =========================================================
+   5. STATUS & CATATAN
+   ========================================================= */
+.state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 14px 0 0;
+  font-size: 13px;
+  color: var(--mut);
+  text-align: center;
+}
+
+.state::before {
+  content: "";
+  width: 9px;
+  height: 9px;
+  flex: none;
+  border-radius: 50%;
+  background: #9ca3af;
+}
+
+body.sharing .state { color: var(--pc); font-weight: 600; }
+body.sharing .state::before { background: var(--pc); animation: blink 1.2s infinite; }
+
+@keyframes blink { 50% { opacity: .3; } }
+
+.note {
+  margin: 16px 14px calc(env(safe-area-inset-bottom, 0px) + 16px);
+  text-align: center;
+  font-size: 12px;
+  color: var(--mut);
+}
+
+/* =========================================================
+   6. FAB HOTLINE
+   ========================================================= */
+.patient-float {
+  position: fixed;
+  right: calc(16px + var(--safe-right));
+  bottom: calc(20px + var(--safe-bottom));
+  z-index: 900;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.fab-help {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: none;
+  background: var(--brand-blue);
+  color: #fff;
+  font-size: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(27, 95, 170, 0.4);
+  transition: background .15s ease, transform .1s ease;
+  -webkit-tap-highlight-color: transparent;
+  animation: helpPulse 2.4s ease-in-out infinite;
+}
+
+.fab-help:active {
+  background: var(--brand-blue-dark);
+  transform: scale(0.94);
+}
+
+@keyframes helpPulse {
+  0%, 100% { box-shadow: 0 4px 14px rgba(27, 95, 170, 0.40); }
+  50%      { box-shadow: 0 4px 20px rgba(27, 95, 170, 0.65); }
+}
+
+/* =========================================================
+   7. DESIGN TOKENS ADAPTIF (iOS / Android)
+   ========================================================= */
+.is-ios {
+  --anim-slide: schedSlideUpIOS 0.32s cubic-bezier(0.32, 0.72, 0, 1);
+  --font-stack: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+}
+
+.is-android {
+  --anim-slide: schedSlideUpAndroid 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+  --font-stack: Roboto, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+/* =========================================================
+   8. OVERLAY SHARED (sched + hotline + confirm)
+   ========================================================= */
+.sched-alert-overlay,
+.modal-overlay,
+.confirm-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  display: none;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 0;
+  overscroll-behavior: contain;
+  -webkit-tap-highlight-color: transparent;
+  animation: fadeIn 0.2s ease;
+}
+
+.sched-alert-overlay.show,
+.modal-overlay.show,
+.confirm-overlay.show { display: flex; }
+
+.sched-alert-overlay { z-index: 9999;  }
+.modal-overlay       { z-index: 10000; }
+.confirm-overlay     { z-index: 10001; }
+
+@keyframes fadeIn {
+  from { opacity: 0; } to { opacity: 1; }
+}
+@keyframes schedSlideUpIOS {
+  from { transform: translateY(100%); } to { transform: translateY(0); }
+}
+@keyframes schedSlideUpAndroid {
+  from { transform: translateY(100%); } to { transform: translateY(0); }
+}
+@keyframes popIn {
+  from { transform: scale(0.94); opacity: 0; }
+  to   { transform: scale(1);    opacity: 1; }
+}
+
+/* =========================================================
+   9. MODAL BOX SHARED
+   ========================================================= */
+.sched-alert-box,
+.modal-box,
+.confirm-box {
+  background: #fff;
+  width: 100%;
+  max-width: 100%;
+  border-radius: var(--radius-modal) var(--radius-modal) 0 0;
+  box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.22);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  overscroll-behavior: contain;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  max-height: 88dvh;
+  max-height: 88vh;
+  animation: var(--anim-slide);
+  padding: 8px calc(var(--pad-modal-x) + var(--safe-right))
+           calc(var(--pad-modal-y) + var(--safe-bottom))
+           calc(var(--pad-modal-x) + var(--safe-left));
+}
+
+.is-android .sched-alert-box,
+.is-android .modal-box,
+.is-android .confirm-box {
+  max-height: calc(var(--vh, 1vh) * 88);
+  will-change: transform;
+}
+
+.sched-alert-handle,
+.modal-handle,
+.confirm-handle {
+  width: 40px;
+  height: 5px;
+  background: #d0d0d0;
+  border-radius: 3px;
+  margin: 6px auto 6px;
+  flex-shrink: 0;
+}
+
+.is-android .sched-alert-handle,
+.is-android .modal-handle,
+.is-android .confirm-handle { height: 4px; background: #dcdcdc; }
+
+/* =========================================================
+   10. MODAL NOTIFIKASI JADWAL BEROBAT
+   ========================================================= */
+.sched-alert-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0 12px;
+  border-bottom: 1px dashed #e6e6e6;
+  flex-shrink: 0;
+}
+
+.sched-alert-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--brand-blue-light);
+  color: var(--brand-blue);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.sched-alert-title { flex: 1; min-width: 0; }
+.sched-alert-title h2 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: #1a1a1a;
+  line-height: 1.25;
+}
+.sched-alert-title p {
+  margin: 3px 0 0;
+  font-size: 11.5px;
+  color: #777;
+  line-height: 1.35;
+}
+
+.sched-alert-close {
+  background: #f2f2f2;
+  border: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  font-size: 15px;
+  color: #666;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background 0.15s ease, transform 0.1s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.sched-alert-close:active {
+  background: #e0e0e0;
+  transform: scale(0.9);
+}
+
+.sched-alert-body {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-right: 2px;
+  flex: 1 1 auto;
+  min-height: 0;
+  touch-action: pan-y;
+}
+
+.sched-alert-item {
+  background: var(--g-light);
+  border: 1px solid #D9EAB8;
+  border-left: 4px solid var(--g);
+  border-radius: 12px;
+  padding: 12px 12px 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  transform: translateZ(0);
+}
+
+.sched-alert-item .sa-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 2px;
+}
+
+.sched-alert-item .sa-name {
+  font-weight: 700;
+  font-size: 14px;
+  color: #1a1a1a;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sched-alert-item .sa-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  font-size: 12.5px;
+  color: #444;
+  line-height: 1.4;
+}
+.sched-alert-item .sa-row .ic {
+  font-size: 12px;
+  width: 16px;
+  text-align: center;
+  flex-shrink: 0;
+  line-height: 1.4;
+}
+
+.sched-alert-item .sa-note {
+  font-size: 12px;
+  color: #666;
+  font-style: italic;
+  margin-top: 3px;
+  padding-left: 23px;
+  line-height: 1.4;
+}
+
+.sa-badge {
+  display: inline-block;
+  padding: 3px 9px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  flex-shrink: 0;
+}
+.sa-badge.today    { background: var(--g);   color: #fff; }
+.sa-badge.tomorrow { background: #FFA500;   color: #fff; }
+.sa-badge.upcoming { background: #e0e0e0;   color: #444; }
+
+.sched-alert-footer {
+  margin-top: 14px;
+  flex-shrink: 0;
+  padding-top: 12px;
+  border-top: 1px solid #f0f0f0;
+}
+
+.sched-alert-footer button {
+  width: 100%;
+  min-height: 48px;
+  padding: 12px 16px;
+  border-radius: 14px;
+  border: none;
+  background: var(--brand-blue);
+  color: #fff;
+  font-weight: 700;
+  font-size: 15.5px;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.1s ease;
+  font-family: inherit;
+  -webkit-tap-highlight-color: transparent;
+  box-shadow: 0 2px 6px rgba(27, 95, 170, 0.25);
+}
+.sched-alert-footer button:active {
+  background: var(--brand-blue-dark);
+  transform: scale(0.98);
+  box-shadow: 0 1px 3px rgba(27, 95, 170, 0.3);
+}
+
+/* =========================================================
+   11. MODAL HOTLINE
+   ========================================================= */
+.hotline-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 4px 0 8px;
+}
+
+.hotline-icon {
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  background: var(--brand-blue-light);
+  color: var(--brand-blue);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32px;
+  margin-bottom: 10px;
+  box-shadow: 0 4px 14px rgba(27, 95, 170, 0.18);
+  animation: hotlinePulse 2s ease-in-out infinite;
+}
+@keyframes hotlinePulse {
+  0%, 100% { transform: scale(1);    box-shadow: 0 4px 14px rgba(27, 95, 170, 0.18); }
+  50%      { transform: scale(1.05); box-shadow: 0 6px 20px rgba(27, 95, 170, 0.30); }
+}
+
+.hotline-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: #1a1a1a;
+  line-height: 1.3;
+}
+.hotline-subtitle {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: #777;
+  line-height: 1.4;
+}
+
+.hotline-number {
+  display: block;
+  margin: 16px auto 4px;
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  color: var(--brand-blue);
+  text-decoration: none;
+  text-align: center;
+  line-height: 1.1;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: var(--brand-blue-soft);
+  border: 1px dashed #B5CCE5;
+  word-break: break-word;
+  transition: background 0.15s ease, transform 0.1s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.hotline-number:active {
+  background: var(--brand-blue-light);
+  transform: scale(0.98);
+}
+
+.hotline-note {
+  margin: 4px 0 0;
+  font-size: 11.5px;
+  color: #999;
+  text-align: center;
+  line-height: 1.4;
+}
+
+.hotline-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 16px;
+  flex-shrink: 0;
+  padding-top: 12px;
+  border-top: 1px solid #f0f0f0;
+}
+
+.hotline-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 50px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  border: none;
+  font-weight: 700;
+  font-size: 15px;
+  cursor: pointer;
+  font-family: inherit;
+  text-decoration: none;
+  text-align: center;
+  transition: background .15s ease, transform .1s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.hotline-btn:active { transform: scale(0.98); }
+
+.hotline-btn.call {
+  background: var(--brand-blue);
+  color: #fff;
+  box-shadow: 0 2px 6px rgba(27, 95, 170, 0.25);
+}
+.hotline-btn.call:active { background: var(--brand-blue-dark); }
+
+.hotline-btn.wa {
+  background: #25D366;
+  color: #fff;
+  box-shadow: 0 2px 6px rgba(37, 211, 102, 0.25);
+}
+.hotline-btn.wa:active { background: #1DA851; }
+
+.hotline-btn.cancel {
+  background: #f2f2f2;
+  color: #444;
+  min-height: 44px;
+  font-weight: 600;
+  font-size: 14px;
+}
+.hotline-btn.cancel:active { background: #e0e0e0; }
+
+.hotline-btn .btn-ic { font-size: 18px; line-height: 1; }
+
+/* =========================================================
+   12. MODAL KONFIRMASI LOKASI (confirm-*)
+   ========================================================= */
+.confirm-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 4px 0 14px;
+  border-bottom: 1px dashed #e6e6e6;
+  flex-shrink: 0;
+}
+
+.confirm-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--g-light);
+  color: var(--g);
+  display: grid;
+  place-items: center;
+  font-size: 22px;
+  flex-shrink: 0;
+}
+
+.confirm-title { flex: 1; min-width: 0; }
+.confirm-title h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: #1a1a1a;
+  line-height: 1.25;
+}
+.confirm-title p {
+  margin: 4px 0 0;
+  font-size: 12.5px;
+  color: #777;
+  line-height: 1.4;
+}
+
+.confirm-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.confirm-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 13.5px;
+  padding: 8px 10px;
+  background: #f9fafb;
+  border-radius: 10px;
+}
+
+.confirm-row .lbl {
+  flex: 0 0 78px;
+  color: var(--mut);
+  font-weight: 600;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: .03em;
+  padding-top: 2px;
+}
+
+.confirm-row .val {
+  flex: 1;
+  min-width: 0;
+  color: var(--ink);
+  word-break: break-word;
+  line-height: 1.4;
+}
+
+.confirm-row .val.mono {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 12.5px;
+  color: var(--brand-blue);
+  font-weight: 700;
+}
+
+/* Badge prioritas (confirm modal) — versi profesional */
+.prio {
+  display: inline-block;
+  padding: 3px 9px;
+  border-radius: 8px;
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+/* Prioritas baru */
+.prio-president {
+  background: var(--prio-president-light);
+  color: var(--prio-president-dark);
+  border: 1px solid var(--prio-president-gold);
+}
+.prio-vvip-suite {
+  background: var(--prio-vvip-suite-light);
+  color: var(--prio-vvip-suite-dark);
+}
+.prio-vvip {
+  background: var(--prio-vvip-light);
+  color: var(--prio-vvip-dark);
+}
+
+/* Backward-compat (data lama) */
+.prio-merah  { background: var(--prio-president-light); color: var(--prio-president-dark); }
+.prio-kuning { background: var(--prio-vvip-suite-light); color: var(--prio-vvip-suite-dark); }
+.prio-hijau  { background: var(--prio-vvip-light); color: var(--prio-vvip-dark); }
+
+.confirm-actions {
+  display: flex;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid #f0f0f0;
+  flex-shrink: 0;
+}
+
+.confirm-actions button {
+  flex: 1;
+  min-height: 50px;
+  border: none;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 15px;
+  cursor: pointer;
+  font-family: inherit;
+  -webkit-tap-highlight-color: transparent;
+  transition: background .15s, transform .1s;
+}
+
+.confirm-actions button:active { transform: scale(0.98); }
+
+.confirm-actions .btn-cancel {
+  background: #f2f2f2;
+  color: #444;
+  flex: 0 0 100px;
+}
+.confirm-actions .btn-cancel:active { background: #e0e0e0; }
+
+.confirm-actions .btn-ok {
+  background: var(--brand-blue);
+  color: #fff;
+  box-shadow: 0 2px 6px rgba(27, 95, 170, .35);
+}
+.confirm-actions .btn-ok:active { background: var(--brand-blue-dark); }
+.confirm-actions .btn-ok:disabled {
+  opacity: .55;
+  cursor: not-allowed;
+}
+
+/* =========================================================
+   13. FOCUS VISIBLE (aksesibilitas)
+   ========================================================= */
+#toggle.btn.wide:focus-visible,
+.hotline-btn:focus-visible,
+.fab-help:focus-visible,
+.sched-alert-close:focus-visible,
+.sched-alert-footer button:focus-visible,
+.confirm-actions button:focus-visible,
+.confirm-row .val:focus-visible,
+.top a[aria-label="Kembali"]:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* =========================================================
+   14. RESPONSIVE — Tablet & Desktop
+   ========================================================= */
+@media (min-width: 560px) {
+  .sched-alert-overlay,
+  .modal-overlay,
+  .confirm-overlay { align-items: center; padding: 20px; }
+
+  .sched-alert-box,
+  .modal-box,
+  .confirm-box {
+    border-radius: 18px;
+    max-width: 440px;
+    max-height: 80vh;
+    padding: 18px 20px 22px;
+    animation: popIn 0.26s cubic-bezier(0.32, 0.72, 0, 1);
+  }
+  .modal-box { max-width: 420px; }
+  .confirm-box { max-width: 420px; }
+
+  .sched-alert-handle,
+  .modal-handle,
+  .confirm-handle { display: none; }
+}
+
+@media (max-width: 360px) {
+  .sched-alert-box,
+  .modal-box,
+  .confirm-box { padding-left: 12px; padding-right: 12px; }
+  .sched-alert-title h2 { font-size: 14px; }
+  .sched-alert-item .sa-name { font-size: 13px; }
+  .sched-alert-item .sa-row { font-size: 12px; }
+  .hotline-number { font-size: 22px; }
+  .confirm-title h2 { font-size: 15px; }
+  .confirm-row .lbl { flex: 0 0 66px; font-size: 11px; }
+  .confirm-actions .btn-cancel { flex: 0 0 84px; font-size: 14px; }
+}
+
+/* =========================================================
+   15. REDUCED MOTION
+   ========================================================= */
+@media (prefers-reduced-motion: reduce) {
+  .sched-alert-overlay,
+  .modal-overlay,
+  .confirm-overlay,
+  .sched-alert-box,
+  .modal-box,
+  .confirm-box,
+  .sched-alert-item,
+  .sched-alert-footer button,
+  .hotline-btn,
+  .confirm-actions button,
+  .fab-help,
+  .radar-logo,
+  .radar,
+  .hotline-icon {
+    animation: none !important;
+    transition: none !important;
+  }
+}

@@ -1,0 +1,580 @@
+/* ============================================================
+   jadwal_berobat.css
+   Style khusus modul "Jadwal Berobat Pasien" — RS Pelabuhan Jakarta
+   Di-include SETELAH style.css di <head>:
+     <link rel="stylesheet" href="../css/style.css">
+     <link rel="stylesheet" href="../css/jadwal_berobat.css">
+   ============================================================ */
+
+/* ------------------------------------------------------------
+   0. Variabel fallback
+   (didefinisikan juga di style.css :root — dideklarasikan ulang
+    di sini agar file ini tetap bisa berdiri sendiri)
+   ------------------------------------------------------------ */
+:root {
+  --brand-blue:        #1B5FAA;
+  --brand-blue-dark:   #144A87;
+  --brand-blue-light:  #E6EEF8;
+  --brand-blue-soft:   #F2F7FC;
+
+  --prio-president:        #E11D48;
+  --prio-president-dark:   #BE123C;
+  --prio-president-gold:   #FBBF24;
+  --prio-president-light:  #FEE2E2;
+
+  --prio-vvip-suite:       #9333EA;
+  --prio-vvip-suite-dark:  #7E22CE;
+  --prio-vvip-suite-light: #F3E8FF;
+
+  --prio-vvip:             #0EA5E9;
+  --prio-vvip-dark:        #0284C7;
+  --prio-vvip-light:       #E0F2FE;
+
+  --muted: #6b7280;
+  --focus-ring: #FFD54F;
+}
+
+/* ============================================================
+   13. JADWAL BEROBAT — versi premium (kartu, avatar, timeline)
+   ============================================================ */
+.schedule-section {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid #f0f0f0;
+}
+
+.schedule-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+  padding: 0 2px;
+}
+
+.schedule-head-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--brand-blue) 0%, var(--brand-blue-dark) 100%);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(27, 95, 170, .25);
+}
+
+.schedule-head-text { flex: 1; min-width: 0; }
+.schedule-head-text h3 {
+  margin: 0;
+  font-size: 14.5px;
+  font-weight: 800;
+  color: #1a1a1a;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+.schedule-head-text p {
+  margin: 2px 0 0;
+  font-size: 11.5px;
+  color: var(--muted);
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.schedule-add-mini {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: var(--brand-blue);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  box-shadow: 0 2px 6px rgba(27, 95, 170, .35);
+  transition: transform .1s ease, background .15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.schedule-add-mini:active {
+  transform: scale(0.92);
+  background: var(--brand-blue-dark);
+}
+
+/* ---------- List jadwal ---------- */
+.schedule-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 340px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  padding-right: 2px;
+}
+.is-ios .schedule-list::-webkit-scrollbar { width: 0; }
+.is-android .schedule-list::-webkit-scrollbar { width: 4px; }
+.is-android .schedule-list::-webkit-scrollbar-thumb {
+  background: #ccc; border-radius: 2px;
+}
+
+/* ---------- Empty state ---------- */
+.schedule-empty {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 14px;
+  background: #f9fafb;
+  border: 1px dashed #d1d5db;
+  border-radius: 12px;
+  color: var(--muted);
+}
+.schedule-empty-icon { font-size: 26px; flex-shrink: 0; }
+.schedule-empty-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 12px;
+  line-height: 1.3;
+}
+.schedule-empty-text b { color: #374151; font-size: 12.5px; }
+
+/* ---------- Kartu jadwal premium ---------- */
+.schedule-card {
+  position: relative;
+  background: #fff;
+  border: 1px solid #eef0f3;
+  border-radius: 14px;
+  padding: 12px 12px 10px;
+  box-shadow: 0 1px 3px rgba(0,0,0,.04), 0 4px 12px rgba(0,0,0,.04);
+  transition: box-shadow .2s ease, transform .1s ease;
+}
+.schedule-card:active { transform: scale(0.995); }
+
+/* Aksen warna kiri sesuai prioritas */
+.schedule-card::before {
+  content: "";
+  position: absolute;
+  left: 0; top: 12px; bottom: 12px;
+  width: 4px;
+  border-radius: 0 4px 4px 0;
+  background: var(--prio-vvip);
+}
+.schedule-card.priority-president::before  { background: linear-gradient(180deg, var(--prio-president), var(--prio-president-gold)); }
+.schedule-card.priority-vvip-suite::before { background: linear-gradient(180deg, var(--prio-vvip-suite), var(--prio-vvip-suite-dark)); }
+.schedule-card.priority-vvip::before       { background: linear-gradient(180deg, var(--prio-vvip), var(--prio-vvip-dark)); }
+
+/* ---------- Header kartu ---------- */
+.sc-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.sc-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  font-size: 13px;
+  color: #fff;
+  letter-spacing: 0.5px;
+  background: var(--prio-vvip);
+  box-shadow: 0 2px 6px rgba(14, 165, 233, .35);
+}
+.schedule-card.priority-president  .sc-avatar {
+  background: linear-gradient(135deg, var(--prio-president), var(--prio-president-dark));
+  box-shadow: 0 2px 6px rgba(225, 29, 72, .35), 0 0 0 2px var(--prio-president-gold) inset;
+}
+.schedule-card.priority-vvip-suite .sc-avatar {
+  background: linear-gradient(135deg, var(--prio-vvip-suite), var(--prio-vvip-suite-dark));
+  box-shadow: 0 2px 6px rgba(147, 51, 234, .35);
+}
+.schedule-card.priority-vvip       .sc-avatar {
+  background: linear-gradient(135deg, var(--prio-vvip), var(--prio-vvip-dark));
+  box-shadow: 0 2px 6px rgba(14, 165, 233, .35);
+}
+
+.sc-title-wrap { flex: 1; min-width: 0; }
+.sc-name {
+  font-size: 14px;
+  font-weight: 800;
+  color: #1a1a1a;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sc-sub {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 2px;
+  line-height: 1.2;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  font-weight: 700;
+}
+
+.sc-badge {
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 4px 8px;
+  border-radius: 8px;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.sc-badge.badge-hari-ini  { background: linear-gradient(135deg, #00AA13, #008a0f); color: #fff; box-shadow: 0 1px 4px rgba(0,170,19,.35); }
+.sc-badge.badge-besok     { background: linear-gradient(135deg, #F59E0B, #D97706); color: #fff; box-shadow: 0 1px 4px rgba(245,158,11,.35); }
+.sc-badge.badge-mendatang { background: #EFF1F4; color: #4B5563; }
+.sc-badge.badge-selesai   { background: #F3F4F6; color: #9CA3AF; text-decoration: line-through; }
+.sc-badge.badge-tanpa     { background: #FEF3C7; color: #92400E; }
+
+/* ---------- Body: baris info ---------- */
+.sc-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 0 6px;
+  border-top: 1px dashed #eef0f3;
+}
+
+.sc-info {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.sc-ic {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  border-radius: 7px;
+  display: grid;
+  place-items: center;
+  background: #F3F6FA;
+  color: var(--brand-blue);
+  margin-top: 1px;
+}
+.sc-ic.ic-note { background: #FFF7E6; color: #B45309; }
+
+.sc-info-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.3;
+}
+
+.sc-lbl {
+  font-size: 10px;
+  font-weight: 700;
+  color: #9CA3AF;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.sc-val {
+  font-size: 12.5px;
+  color: #1F2937;
+  font-weight: 600;
+  word-break: break-word;
+  line-height: 1.35;
+}
+
+.sc-info.mono .sc-val {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 12px;
+  letter-spacing: 0.2px;
+}
+
+/* ---------- Footer: tombol hapus ---------- */
+.sc-foot {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 6px;
+  border-top: 1px solid #f5f6f8;
+}
+
+.sc-del {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: #EF4444;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background .15s ease, color .15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.sc-del:hover  { background: #FEF2F2; }
+.sc-del:active { background: #FEE2E2; transform: scale(0.97); }
+
+/* ---------- Legacy: tombol tambah besar (untuk fallback) ---------- */
+.add-schedule-btn {
+  margin-top: 10px;
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 10px;
+  border-radius: 10px;
+  border: 1px dashed var(--brand-blue);
+  background: #fff;
+  color: var(--brand-blue);
+  font-weight: 700;
+  font-size: 12.5px;
+  cursor: pointer;
+  transition: background .2s ease, transform .1s ease;
+  -webkit-tap-highlight-color: transparent;
+  font-family: inherit;
+}
+.add-schedule-btn:hover  { background: var(--brand-blue-light); }
+.add-schedule-btn:active { transform: scale(0.98); }
+
+/* ---------- Fokus aksesibilitas ---------- */
+.sc-del:focus-visible,
+.schedule-add-mini:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* ============================================================
+   14. MODAL TAMBAH JADWAL — Adaptive iOS / Android / Desktop
+   ============================================================ */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  display: none;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 9999;
+  padding: 0;
+  overscroll-behavior: contain;
+  -webkit-tap-highlight-color: transparent;
+  animation: modalFadeIn 0.2s ease;
+}
+.modal-overlay.show { display: flex; }
+
+@keyframes modalFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes modalSlideUpIOS {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+@keyframes modalSlideUpAndroid {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+
+.modal-box {
+  background: #fff;
+  width: 100%;
+  max-width: 100%;
+  border-radius: 20px 20px 0 0;
+  box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.22);
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  overflow: hidden;
+  overscroll-behavior: contain;
+  -webkit-font-smoothing: antialiased;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  padding: 8px 16px calc(16px + env(safe-area-inset-bottom, 0px));
+}
+
+.modal-handle {
+  width: 40px;
+  height: 5px;
+  background: #d0d0d0;
+  border-radius: 3px;
+  margin: 6px auto 6px;
+  flex-shrink: 0;
+}
+
+.modal-box h3 {
+  margin: 4px 0 14px;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--brand-blue);
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.modal-body {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  flex: 1 1 auto;
+  min-height: 0;
+  padding-right: 2px;
+}
+
+.modal-box label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: #444;
+  margin: 10px 0 4px;
+}
+.modal-box input,
+.modal-box select,
+.modal-box textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #ccc;
+  border-radius: 10px;
+  font-size: 14px;
+  font-family: inherit;
+  box-sizing: border-box;
+  -webkit-appearance: none;
+  appearance: none;
+  background: #fff;
+}
+.modal-box input:focus,
+.modal-box select:focus,
+.modal-box textarea:focus {
+  outline: none;
+  border-color: var(--brand-blue);
+  box-shadow: 0 0 0 3px rgba(27, 95, 170, 0.15);
+}
+.modal-box textarea {
+  resize: vertical;
+  min-height: 64px;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+  flex-shrink: 0;
+  padding-top: 12px;
+  border-top: 1px solid #f0f0f0;
+}
+.modal-actions button {
+  flex: 1;
+  min-height: 48px;
+  padding: 12px;
+  border-radius: 12px;
+  border: none;
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background .15s ease, transform .1s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.modal-actions button:active { transform: scale(0.98); }
+.btn-cancel { background: #eee; color: #444; }
+.btn-cancel:active { background: #e0e0e0; }
+.btn-save {
+  background: var(--brand-blue);
+  color: #fff;
+  box-shadow: 0 2px 6px rgba(27, 95, 170, 0.25);
+}
+.btn-save:active { background: var(--brand-blue-dark); }
+
+/* iOS */
+.is-ios .modal-overlay {
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+.is-ios .modal-box {
+  max-height: 88dvh;
+  max-height: 88vh;
+  padding: 8px calc(16px + env(safe-area-inset-right, 0px))
+           calc(16px + env(safe-area-inset-bottom, 0px))
+           calc(16px + env(safe-area-inset-left, 0px));
+  animation: modalSlideUpIOS 0.32s cubic-bezier(0.32, 0.72, 0, 1);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+}
+.is-ios .modal-handle { height: 5px; background: #d0d0d0; }
+.is-ios .modal-body::-webkit-scrollbar { width: 0; }
+
+/* Android */
+.is-android .modal-overlay {
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+}
+.is-android .modal-box {
+  max-height: calc(var(--vh, 1vh) * 88);
+  padding: 8px 16px calc(16px + env(safe-area-inset-bottom, 0px));
+  animation: modalSlideUpAndroid 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+  font-family: Roboto, system-ui, -apple-system, "Segoe UI", sans-serif;
+  will-change: transform;
+}
+.is-android .modal-handle { height: 4px; background: #dcdcdc; }
+.is-android .modal-body::-webkit-scrollbar { width: 4px; }
+.is-android .modal-body::-webkit-scrollbar-thumb {
+  background: #ccc; border-radius: 2px;
+}
+
+/* Tablet / Desktop */
+@media (min-width: 560px) {
+  .modal-overlay { align-items: center; padding: 20px; }
+  .modal-box {
+    border-radius: 18px;
+    max-width: 420px;
+    max-height: 80vh;
+    padding: 18px 20px 22px;
+    animation: modalPopIn 0.26s cubic-bezier(0.32, 0.72, 0, 1);
+  }
+  .modal-handle { display: none; }
+  @keyframes modalPopIn {
+    from { transform: scale(0.94); opacity: 0; }
+    to   { transform: scale(1);    opacity: 1; }
+  }
+}
+
+@media (max-width: 360px) {
+  .modal-box { padding-left: 12px; padding-right: 12px; }
+  .modal-box h3 { font-size: 15px; }
+  .modal-box input,
+  .modal-box select,
+  .modal-box textarea { font-size: 13px; }
+}
+
+/* Reduced motion untuk komponen jadwal & modal */
+@media (prefers-reduced-motion: reduce) {
+  .modal-overlay,
+  .modal-box,
+  .modal-actions button,
+  .add-schedule-btn,
+  .schedule-card,
+  .schedule-add-mini,
+  .sc-del {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* Konteks alternatif: jadwal di dalam bottom panel */
+#bottomPanelContent .schedule-list { max-height: none; }
+
+/* ============================================================
+   17b. Responsive kartu jadwal (dipindah dari section 17 style.css)
+   ============================================================ */
+@media (max-width: 360px) {
+  .schedule-head-icon { width: 34px; height: 34px; border-radius: 10px; }
+  .schedule-head-text h3 { font-size: 13.5px; }
+  .sc-avatar { width: 36px; height: 36px; font-size: 12px; }
+  .sc-name { font-size: 13px; }
+  .sc-val { font-size: 12px; }
+}

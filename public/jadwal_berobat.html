@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Jadwal Berobat Pasien</title>
+</head>
+<body>
+
+  <!-- ====== JADWAL BEROBAT ====== -->
+  <section class="schedule-section" aria-labelledby="scheduleTitle">
+    <div class="schedule-head">
+      <div class="schedule-head-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none"
+             stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="4" width="18" height="18" rx="3" ry="3"/>
+          <line x1="16" y1="2" x2="16" y2="6"/>
+          <line x1="8"  y1="2" x2="8"  y2="6"/>
+          <line x1="3"  y1="10" x2="21" y2="10"/>
+          <path d="M9 16l2 2 4-4"/>
+        </svg>
+      </div>
+      <div class="schedule-head-text">
+        <h3 id="scheduleTitle">Jadwal Berobat Pasien</h3>
+        <p id="scheduleSubtitle">Tidak ada jadwal dalam waktu dekat.</p>
+      </div>
+      <button type="button" class="schedule-add-mini" id="addScheduleBtn"
+              aria-label="Tambah jadwal berobat">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none"
+             stroke="currentColor" stroke-width="2.4"
+             stroke-linecap="round" stroke-linejoin="round">
+          <line x1="12" y1="5" x2="12" y2="19"/>
+          <line x1="5"  y1="12" x2="19" y2="12"/>
+        </svg>
+      </button>
+    </div>
+
+    <ul id="scheduleList" class="schedule-list" aria-live="polite">
+      <li class="schedule-empty">
+        <div class="schedule-empty-icon" aria-hidden="true">📭</div>
+        <div class="schedule-empty-text">
+          <b>Belum ada jadwal berobat.</b>
+          <span>Tekan tombol + untuk menambahkan jadwal pasien.</span>
+        </div>
+      </li>
+    </ul>
+  </section>
+  <!-- ====== /JADWAL BEROBAT ====== -->
+
+
+  <!-- ====== MODAL TAMBAH JADWAL ====== -->
+  <div class="modal-overlay" id="scheduleModal" role="dialog"
+       aria-modal="true" aria-labelledby="modalTitle">
+    <div class="modal-box">
+      <div class="modal-handle" aria-hidden="true"></div>
+      <h3 id="modalTitle">Tambah Jadwal Berobat</h3>
+
+      <div class="modal-body">
+        <label for="schedName">Nama Pasien</label>
+        <input type="text" id="schedName" placeholder="Contoh: Budi Santoso"
+               autocomplete="name">
+
+        <label for="schedDate">Tanggal Berobat</label>
+        <input type="date" id="schedDate">
+
+        <label for="schedTime">Jam</label>
+        <input type="time" id="schedTime">
+
+        <label for="schedPlace">Tempat / Poli</label>
+        <input type="text" id="schedPlace"
+               placeholder="Contoh: Poli Umum / RSUD Kota">
+
+        <label for="schedNote">Catatan (opsional)</label>
+        <textarea id="schedNote"
+                  placeholder="Contoh: Bawa hasil lab, kontrol gula darah"></textarea>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="btn-cancel" id="cancelSchedule">Batal</button>
+        <button type="button" class="btn-save" id="saveSchedule">Simpan</button>
+      </div>
+    </div>
+  </div>
+  <!-- ====== /MODAL TAMBAH JADWAL ====== -->
+
+
+  <script>
+  /* =====================================================================
+   *  Jadwal Berobat — Logic (tanpa CSS / self-contained)
+   * ===================================================================== */
+  (function () {
+    'use strict';
+
+    if (window.__JADWAL_BEROBAT_INIT__) return;
+    window.__JADWAL_BEROBAT_INIT__ = true;
+
+    var $ = function (id) { return document.getElementById(id); };
+
+    /* PRIORITY META */
+    var PRIORITY_META = {
+      'president':  { cls: 'president',  label: 'President Suite' },
+      'vvip-suite': { cls: 'vvip-suite', label: 'VVIP Suite' },
+      'vvip':       { cls: 'vvip',       label: 'VVIP' },
+      'merah':      { cls: 'president',  label: 'President Suite' },
+      'kuning':     { cls: 'vvip-suite', label: 'VVIP Suite' },
+      'biru':       { cls: 'vvip',       label: 'VVIP' },
+      'hijau':      { cls: 'vvip',       label: 'VVIP' }
+    };
+    var DEFAULT_PRIORITY = 'vvip';
+
+    function getPriorityMeta(p) {
+      return PRIORITY_META[p] || PRIORITY_META[DEFAULT_PRIORITY];
+    }
+    function guessPriority(name) {
+      if (!name) return DEFAULT_PRIORITY;
+      var n = String(name).toLowerCase();
+      if (n.indexOf('president') >= 0) return 'president';
+      if (n.indexOf('vvip suite') >= 0 || n.indexOf('suite') >= 0) return 'vvip-suite';
+      return DEFAULT_PRIORITY;
+    }
+
+    /* DOM */
+    var STORAGE_KEY        = 'jadwal_berobat_pasien';
+    var scheduleListEl     = $('scheduleList');
+    var scheduleSubtitleEl = $('scheduleSubtitle');
+    var modal              = $('scheduleModal');
+    if (!scheduleListEl || !modal) return;
+
+    /* Body lock */
+    var lockCount = 0, savedOverflow = '';
+    function lockBody()   { lockCount++; if (lockCount === 1) { savedOverflow = document.body.style.overflow || ''; document.body.style.overflow = 'hidden'; } }
+    function unlockBody() { lockCount = Math.max(0, lockCount - 1); if (lockCount === 0) document.body.style.overflow = savedOverflow; }
+
+    /* Storage */
+    function getSchedules() {
+      try { var raw = localStorage.getItem(STORAGE_KEY); return raw ? JSON.parse(raw) : []; }
+      catch (e) { return []; }
+    }
+    function saveSchedules(data) {
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
+      catch (e) { console.warn('[jadwal_berobat] Gagal menyimpan:', e); }
+    }
+
+    /* Formatter */
+    function formatTanggal(isoDate) {
+      if (!isoDate) return '-';
+      var d = new Date(isoDate + 'T00:00:00');
+      if (isNaN(d.getTime())) return isoDate;
+      var hari  = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
+      var bulan = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+      return hari[d.getDay()] + ', ' + d.getDate() + ' ' + bulan[d.getMonth()] + ' ' + d.getFullYear();
+    }
+    function getBadge(isoDate) {
+      if (!isoDate) return { cls: 'badge-tanpa', text: 'Tanpa tanggal' };
+      var today = new Date(); today.setHours(0,0,0,0);
+      var target = new Date(isoDate + 'T00:00:00');
+      var diff = Math.round((target - today) / 86400000);
+      if (diff === 0) return { cls: 'badge-hari-ini',  text: 'Hari Ini' };
+      if (diff === 1) return { cls: 'badge-besok',     text: 'Besok' };
+      if (diff > 1)   return { cls: 'badge-mendatang', text: diff + ' hari lagi' };
+      return { cls: 'badge-selesai', text: 'Selesai' };
+    }
+    function getInitials(name) {
+      if (!name) return 'P';
+      var parts = String(name).trim().split(/\s+/);
+      return parts.length === 1
+        ? parts[0].charAt(0).toUpperCase()
+        : (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
+    }
+
+    /* Card builder */
+    function buildScheduleCard(item, idx) {
+      var badge = getBadge(item.date);
+      var prio  = getPriorityMeta(guessPriority(item.name));
+
+      var li = document.createElement('li');
+      li.className = 'schedule-card priority-' + prio.cls;
+      li.dataset.idx = String(idx);
+
+      var head = document.createElement('div'); head.className = 'sc-head';
+
+      var avatar = document.createElement('div');
+      avatar.className = 'sc-avatar';
+      avatar.textContent = getInitials(item.name);
+      avatar.setAttribute('aria-hidden', 'true');
+
+      var titleWrap = document.createElement('div'); titleWrap.className = 'sc-title-wrap';
+      var title = document.createElement('div'); title.className = 'sc-name';
+      title.textContent = item.name || 'Pasien';
+      var sub = document.createElement('div'); sub.className = 'sc-sub';
+      sub.textContent = prio.label;
+      titleWrap.appendChild(title); titleWrap.appendChild(sub);
+
+      var badgeEl = document.createElement('span');
+      badgeEl.className = 'sc-badge ' + badge.cls;
+      badgeEl.textContent = badge.text;
+
+      head.appendChild(avatar); head.appendChild(titleWrap); head.appendChild(badgeEl);
+
+      var body = document.createElement('div'); body.className = 'sc-body';
+      function makeInfo(iconKey, label, value) {
+        var row = document.createElement('div'); row.className = 'sc-info';
+        var ic = document.createElement('span'); ic.className = 'sc-ic ic-' + iconKey;
+        ic.setAttribute('aria-hidden', 'true');
+        var svg = '';
+        switch (iconKey) {
+          case 'date':  svg = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="3"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>'; break;
+          case 'time':  svg = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg>'; break;
+          case 'place': svg = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>'; break;
+          case 'note':  svg = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="14 3 14 9 20 9"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/></svg>'; break;
+        }
+        ic.innerHTML = svg;
+
+        var tx = document.createElement('div'); tx.className = 'sc-info-text';
+        var lbl = document.createElement('span'); lbl.className = 'sc-lbl'; lbl.textContent = label;
+        var val = document.createElement('span'); val.className = 'sc-val'; val.textContent = value || '-';
+        tx.appendChild(lbl); tx.appendChild(val);
+        row.appendChild(ic); row.appendChild(tx);
+        return row;
+      }
+      body.appendChild(makeInfo('date',  'Tanggal', formatTanggal(item.date)));
+      body.appendChild(makeInfo('time',  'Jam',     item.time  || '-'));
+      body.appendChild(makeInfo('place', 'Tempat',  item.place || '-'));
+      if (item.note) body.appendChild(makeInfo('note', 'Catatan', item.note));
+
+      var foot = document.createElement('div'); foot.className = 'sc-foot';
+      var del = document.createElement('button');
+      del.type = 'button'; del.className = 'sc-del';
+      del.innerHTML = '<span>Hapus</span>';
+      del.addEventListener('click', function (e) {
+        e.stopPropagation();
+        if (confirm('Hapus jadwal "' + (item.name || 'Pasien') + '"?')) {
+          var arr = getSchedules(); arr.splice(idx, 1);
+          saveSchedules(arr); renderSchedules();
+        }
+      });
+      foot.appendChild(del);
+
+      li.appendChild(head); li.appendChild(body); li.appendChild(foot);
+      return li;
+    }
+
+    /* Render */
+    function renderSchedules() {
+      var data = getSchedules();
+      data.sort(function (a, b) {
+        return ((a.date || '') + ' ' + (a.time || ''))
+             .localeCompare((b.date || '') + ' ' + (b.time || ''));
+      });
+
+      scheduleListEl.innerHTML = '';
+
+      if (scheduleSubtitleEl) {
+        var upcomingCount = 0;
+        for (var u = 0; u < data.length; u++) {
+          if (!data[u].date) continue;
+          var t0 = new Date(); t0.setHours(0,0,0,0);
+          var t1 = new Date(data[u].date + 'T00:00:00');
+          if (isNaN(t1.getTime())) continue;
+          var diff = Math.round((t1 - t0) / 86400000);
+          if (diff >= 0 && diff <= 7) upcomingCount++;
+        }
+        if (data.length === 0)              scheduleSubtitleEl.textContent = 'Tidak ada jadwal dalam waktu dekat.';
+        else if (upcomingCount > 0)         scheduleSubtitleEl.textContent = upcomingCount + ' jadwal dalam 7 hari ke depan.';
+        else                                scheduleSubtitleEl.textContent = data.length + ' jadwal tersimpan.';
+      }
+
+      if (!data.length) {
+        var empty = document.createElement('li');
+        empty.className = 'schedule-empty';
+        empty.innerHTML =
+          '<div class="schedule-empty-icon" aria-hidden="true">📭</div>' +
+          '<div class="schedule-empty-text">' +
+            '<b>Belum ada jadwal berobat.</b>' +
+            '<span>Tekan tombol + untuk menambahkan jadwal pasien.</span>' +
+          '</div>';
+        scheduleListEl.appendChild(empty);
+        return;
+      }
+      data.forEach(function (item, idx) {
+        scheduleListEl.appendChild(buildScheduleCard(item, idx));
+      });
+    }
+
+    /* Modal */
+    var isOpen = false;
+    function openModal() {
+      if (isOpen) return;
+      isOpen = true; lockBody(); modal.classList.add('show');
+      try { history.pushState({ scheduleModal: true }, ''); } catch (e) {}
+      setTimeout(function () { var f = $('schedName'); if (f) f.focus(); }, 350);
+    }
+    function closeModal() {
+      if (!isOpen) return;
+      isOpen = false; modal.classList.remove('show'); unlockBody();
+    }
+    window.addEventListener('popstate', function () { if (isOpen) closeModal(); });
+
+    /* Events */
+    var addBtn = $('addScheduleBtn');
+    if (addBtn) addBtn.addEventListener('click', function () {
+      var t = new Date();
+      $('schedDate').value  = t.getFullYear() + '-' +
+                              String(t.getMonth() + 1).padStart(2, '0') + '-' +
+                              String(t.getDate()).padStart(2, '0');
+      $('schedTime').value  = '09:00';
+      $('schedName').value  = '';
+      $('schedPlace').value = '';
+      $('schedNote').value  = '';
+      openModal();
+    });
+
+    var cancelBtn = $('cancelSchedule');
+    if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
+
+    modal.addEventListener('click', function (e) { if (e.target === modal) closeModal(); });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && isOpen) closeModal(); });
+
+    var saveBtn = $('saveSchedule');
+    if (saveBtn) saveBtn.addEventListener('click', function () {
+      var name  = $('schedName').value.trim();
+      var date  = $('schedDate').value;
+      var time  = $('schedTime').value;
+      var place = $('schedPlace').value.trim();
+      var note  = $('schedNote').value.trim();
+
+      if (!name)  { alert('Nama pasien wajib diisi.');     $('schedName').focus();  return; }
+      if (!date)  { alert('Tanggal berobat wajib diisi.'); $('schedDate').focus();  return; }
+      if (!place) { alert('Tempat / poli wajib diisi.');   $('schedPlace').focus(); return; }
+
+      var data = getSchedules();
+      data.push({ id: Date.now(), name: name, date: date, time: time, place: place, note: note });
+      saveSchedules(data);
+      renderSchedules();
+      closeModal();
+    });
+
+    renderSchedules();
+
+    window.__jadwalBerobat = {
+      render: renderSchedules,
+      open:   openModal,
+      close:  closeModal,
+      get:    getSchedules
+    };
+  })();
+  </script>
+
+</body>
+</html>

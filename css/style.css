@@ -1,0 +1,648 @@
+/* ============================================================
+   style.css — tema mobile ala Gojek/GoCar (untuk public/index.html)
+   patient.html memakai css/patient.css yang dimuat setelah file ini.
+   Style khusus "Jadwal Berobat Pasien" ada di css/jadwal_berobat.css
+   ============================================================ */
+
+/* 1. ROOT & RESET */
+:root {
+  --green: #00aa13;
+  --green-dark: #008a0f;
+  --yellow: #f59e0b;
+  --red: #dc2626;
+
+  --brand: #0e7c6b;      /* pin rumah sakit */
+  --merah: #c8352b;      /* pin pasien */
+  --kuning: #d9962b;     /* pin pasien kuning */
+  --biru: #0ea5e9;       /* pin pasien biru */
+
+  --ink: #1c1c1e;
+  --muted: #6b7280;
+  --line: #eceef1;
+  --bg: #e5e7eb;
+  --card: #ffffff;
+  --shadow: 0 6px 20px rgba(0, 0, 0, .15);
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --sheet-h: 220px;      /* diisi otomatis oleh script (tinggi bottom sheet) */
+
+  /* Brand IHC RSPJ */
+  --brand-blue:        #1B5FAA;
+  --brand-blue-dark:   #144A87;
+  --brand-blue-light:  #E6EEF8;
+  --brand-blue-soft:   #F2F7FC;
+  --brand-green:       #92C83E;
+  --brand-green-dark:  #7AB02E;
+  --brand-green-light: #F1F8E3;
+
+  /* Prioritas pasien — palet profesional
+     Mapping warna:
+       president  → MERAH    (crimson premium + gold border)
+       vvip-suite → UNGU     (royal purple)
+       vvip       → BIRU     (sky blue)
+       merah      → MERAH    (alias president)
+       kuning     → KUNING   (amber #d9962b)
+       biru       → BIRU     (sky blue, alias vvip)
+  */
+  --prio-president:        #E11D48;   /* Crimson premium */
+  --prio-president-dark:   #BE123C;
+  --prio-president-gold:   #FBBF24;
+  --prio-president-light:  #FEE2E2;
+
+  --prio-vvip-suite:       #9333EA;   /* Ungu royal */
+  --prio-vvip-suite-dark:  #7E22CE;
+  --prio-vvip-suite-light: #F3E8FF;
+
+  --prio-vvip:             #0EA5E9;   /* Biru langit */
+  --prio-vvip-dark:        #0284C7;
+  --prio-vvip-light:       #E0F2FE;
+
+  --focus-ring: #FFD54F;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  width: 100%;
+  background: var(--bg);
+  color: var(--ink);
+  overflow-x: hidden;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-font-smoothing: antialiased;
+}
+
+:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
+
+/* 2. LAYOUT & PETA */
+.layout {
+  position: fixed;
+  inset: 0;
+  margin: 0 auto;
+  width: 100%;
+  max-width: 480px;
+  overflow: hidden;
+  background: #dfe6e9;
+  box-shadow: 0 0 30px rgba(0, 0, 0, .15);
+}
+#map { position: absolute; inset: 0; z-index: 1; background: #d4e0ec; }
+.leaflet-control-zoom { display: none; }
+.leaflet-control-attribution { font-size: 9px; }
+
+/* 3. HEADER MENGAMBANG (status koneksi & tombol) */
+.bar {
+  position: fixed;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 480px;
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: calc(var(--safe-top) + 8px) 14px 8px 64px;
+  pointer-events: none;
+  background: var(--brand-blue);
+  color: #fff;
+}
+.bar h1 { display: none; }
+.bar-right { display: flex; align-items: center; gap: 6px; margin-left: auto; pointer-events: auto; }
+
+.conn {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 5px 10px;
+  border-radius: 99px;
+  background: #fff;
+  color: var(--muted);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, .15);
+  white-space: nowrap;
+}
+.conn.connecting { color: #b45309; }
+.conn.online, .conn.connected { color: var(--green); }
+.conn.offline { color: var(--red); }
+.conn.demo, .conn.unsupported { color: var(--brand-blue); }
+.conn.error { color: var(--red); }
+
+/* 4. TOMBOL */
+.btn {
+  border: 0;
+  font: 600 12px inherit;
+  font-family: inherit;
+  padding: 7px 12px;
+  border-radius: 99px;
+  background: var(--green);
+  color: #fff;
+  text-decoration: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, .15);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btn:active { transform: scale(.96); }
+.btn.ghost { background: #fff; color: var(--ink); }
+
+.bar .btn {
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.35);
+}
+.bar .btn:hover { background: rgba(255, 255, 255, 0.25); }
+.bar .btn.ghost {
+  background: transparent;
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+}
+
+/* 5. TOMBOL KEMBALI */
+.back-fab {
+  position: absolute;
+  z-index: 1300;
+  top: calc(var(--safe-top) + 8px);
+  left: 14px;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 50%;
+  background: #fff;
+  color: var(--ink);
+  font-size: 20px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, .2);
+  cursor: pointer;
+}
+.back-fab:active { transform: scale(.92); }
+
+/* 6. KARTU LOKASI (ATAS) */
+.top-card {
+  position: absolute;
+  z-index: 1100;
+  left: 14px;
+  right: 14px;
+  top: calc(var(--safe-top) + 58px);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--card);
+  border-radius: 16px;
+  padding: 12px 14px;
+  box-shadow: var(--shadow);
+}
+.loc-icon {
+  width: 32px;
+  height: 32px;
+  flex: none;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 14px;
+  color: #fff;
+  background: var(--green);
+}
+.loc-icon.green { background: var(--green); color: #fff; }
+.loc-icon.red { background: var(--red); }
+.loc-icon.orange { background: var(--yellow); }
+.loc-text {
+  flex: 1;
+  min-width: 0;
+  font-weight: 700;
+  font-size: 14px;
+  line-height: 1.3;
+}
+.loc-text small {
+  display: block;
+  font-weight: 400;
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.edit-btn {
+  border: 1.5px solid var(--green);
+  background: #fff;
+  color: var(--green);
+  font: 700 12px inherit;
+  font-family: inherit;
+  padding: 6px 14px;
+  border-radius: 99px;
+  cursor: pointer;
+  flex: none;
+}
+.edit-btn { color: var(--brand-blue) !important; border-color: var(--brand-blue) !important; }
+
+/* 7. TOMBOL MELAYANG KANAN (di atas bottom sheet) */
+.map-float {
+  position: absolute;
+  z-index: 1100;
+  right: 14px;
+  bottom: calc(var(--sheet-h) + 14px);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: bottom .25s;
+}
+.fab {
+  width: 46px;
+  height: 46px;
+  border: 0;
+  border-radius: 50%;
+  background: #fff;
+  font-size: 20px;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, .25);
+  cursor: pointer;
+}
+.fab:active { transform: scale(.92); }
+.fab.green { background: var(--green); }
+
+/* 8. BOTTOM SHEET = DAFTAR PASIEN */
+.side {
+  position: absolute;
+  z-index: 1200;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  max-height: 48vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  background: var(--card);
+  border-radius: 22px 22px 0 0;
+  padding: 8px 16px calc(var(--safe-bottom) + 16px);
+  box-shadow: 0 -6px 24px rgba(0, 0, 0, .18);
+  transition: max-height .25s;
+}
+.side.collapsed { max-height: 110px; overflow: hidden; }
+
+.sheet-handle {
+  display: block;
+  width: 40px;
+  height: 4px;
+  margin: 0 auto 10px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: #d1d5db;
+  cursor: pointer;
+}
+.sheet-title { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+.sheet-title b { font-size: 16px; color: var(--brand-blue); }
+.sheet-title span {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--brand-blue);
+  background: var(--brand-blue-light);
+  padding: 4px 10px;
+  border-radius: 99px;
+}
+.side .sheet-title { border-bottom-color: var(--brand-blue-light); }
+#liveTag { color: var(--brand-blue); }
+.summary { margin: 0 0 8px; font-size: 12.5px; color: var(--muted); line-height: 1.4; }
+
+/* Daftar pasien */
+.list { list-style: none; }
+.list .item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 4px;
+  border-top: 1px solid var(--line);
+  border-radius: 8px;
+  transition: background .15s;
+}
+.list .item.active { background: #e8f8ea; }
+.list .item.stale { opacity: .55; }
+
+.list .item-btn {
+  all: unset;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink);
+  font-family: inherit;
+}
+.list .item-btn:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: -3px; border-radius: 6px; }
+.list .item-btn::before {
+  content: "";
+  flex: none;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background-color: var(--green);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z'/%3E%3C/svg%3E");
+  background-size: 22px;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+.list .item.merah  .item-btn::before { background-color: var(--prio-president); }
+.list .item.kuning .item-btn::before { background-color: var(--kuning); }
+.list .item.biru   .item-btn::before { background-color: var(--prio-vvip); }
+.list .item.president  .item-btn::before { background-color: var(--prio-president);  box-shadow: 0 0 0 2px var(--prio-president-gold) inset; }
+.list .item.vvip-suite .item-btn::before { background-color: var(--prio-vvip-suite); }
+.list .item.vvip       .item-btn::before { background-color: var(--prio-vvip); }
+
+.item-top { display: flex; justify-content: space-between; align-items: center; width: 100%; gap: 8px; }
+.item-meta { font-size: 12px; color: var(--muted); margin-top: 2px; font-weight: 400; }
+.tag {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 99px;
+  color: #fff;
+  background: var(--green);
+  white-space: nowrap;
+}
+.tag.merah  { background: var(--prio-president); }
+.tag.kuning { background: var(--kuning); color: #fff; }
+
+/* ✅ Tag "Biru" — background biru + tulisan putih (konsisten) */
+.tag.biru   {
+  background: var(--prio-vvip);
+  color: #fff;
+}
+
+.tag.president  { background: linear-gradient(135deg, var(--prio-president), var(--prio-president-dark)); border: 1px solid var(--prio-president-gold); }
+.tag.vvip-suite { background: linear-gradient(135deg, var(--prio-vvip-suite), var(--prio-vvip-suite-dark)); }
+.tag.vvip       { background: linear-gradient(135deg, var(--prio-vvip), var(--prio-vvip-dark)); }
+
+/* Highlight aktif sesuai kelas */
+.list .item.president.active  { background: var(--prio-president-light); }
+.list .item.vvip-suite.active { background: var(--prio-vvip-suite-light); }
+.list .item.vvip.active       { background: var(--prio-vvip-light); }
+
+/* 9. PANEL INFO LAYANAN (opsional, di atas bottom sheet) */
+.bottom-panel {
+  position: absolute;
+  z-index: 1150;
+  left: 14px;
+  right: 14px;
+  bottom: calc(var(--sheet-h) + 14px);
+  background: var(--card);
+  border-radius: 16px;
+  padding: 12px;
+  box-shadow: var(--shadow);
+}
+.bottom-panel.hidden { display: none; }
+.bottom-panel .handle { display: none; }
+
+.service-header { display: flex; align-items: center; gap: 12px; }
+.service-icon {
+  width: 42px;
+  height: 42px;
+  flex: none;
+  border-radius: 12px;
+  background: #e8f8ea;
+  display: grid;
+  place-items: center;
+  font-size: 1.3rem;
+}
+.service-info { flex: 1; min-width: 0; }
+.service-name { font-size: .95rem; font-weight: 800; line-height: 1.2; }
+.service-detail { display: flex; align-items: center; gap: 6px; margin-top: 3px; font-size: .72rem; font-weight: 500; color: var(--muted); }
+.service-detail .sep { color: var(--line); }
+.service-price { text-align: right; flex: none; }
+.service-price .price { font-size: .95rem; font-weight: 800; line-height: 1.2; }
+.service-price .price-sub { margin-top: 2px; font-size: .68rem; color: var(--muted); text-decoration: line-through; }
+
+/* 10. PIN DI PETA */
+.pin {
+  position: relative;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 3px solid #fff;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, .4);
+}
+.pin.merah  { background: var(--prio-president); }
+.pin.kuning { background: var(--kuning); }
+.pin.biru   { background: var(--prio-vvip); }
+
+.pin.president  {
+  background: var(--prio-president);
+  border: 3px solid var(--prio-president-gold);
+  box-shadow:
+    0 0 0 2px var(--prio-president),
+    0 0 12px rgba(251, 191, 36, .55),
+    0 1px 6px rgba(225, 29, 72, .55);
+}
+.pin.vvip-suite {
+  background: var(--prio-vvip-suite);
+  box-shadow: 0 1px 6px rgba(147, 51, 234, .55);
+}
+.pin.vvip {
+  background: var(--prio-vvip);
+  box-shadow: 0 1px 6px rgba(14, 165, 233, .55);
+}
+
+.pin .pulse {
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  opacity: 0;
+  animation: ping 2s ease-out infinite;
+}
+.pin.merah  .pulse { color: var(--prio-president); }
+.pin.kuning .pulse { color: var(--kuning); }
+.pin.biru   .pulse { color: var(--prio-vvip); }
+.pin.president  .pulse { color: var(--prio-president); }
+.pin.vvip-suite .pulse { color: var(--prio-vvip-suite); }
+.pin.vvip       .pulse { color: var(--prio-vvip); }
+
+.pin.hosp {
+  width: 34px;
+  height: 34px;
+  background: var(--brand);
+  color: #fff;
+  font-weight: 700;
+  font-size: 22px;
+  line-height: 28px;
+  text-align: center;
+  border-radius: 8px;
+}
+@keyframes ping {
+  0% { transform: scale(1); opacity: .7; }
+  100% { transform: scale(2.4); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) { .pin .pulse { animation: none; } }
+.leaflet-marker-icon { transition: transform 1s linear; }
+.leaflet-zoom-anim .leaflet-marker-icon { transition: none; }
+
+/* 11. RESPONSIVE */
+@media (max-width: 360px) {
+  .top-card { left: 10px; right: 10px; padding: 10px 12px; }
+  .loc-text { font-size: 13px; }
+  .fab { width: 42px; height: 42px; font-size: 18px; }
+  .list .item-btn { font-size: 14px; }
+}
+@media (orientation: landscape) and (max-height: 500px) {
+  .side { max-height: 40vh; }
+}
+
+/* ============================================================
+   12. HEADER BRAND (logo + teks)
+   ============================================================ */
+.bar-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  pointer-events: auto;
+}
+.brand-logo {
+  height: 44px;
+  width: auto;
+  max-width: 150px;
+  object-fit: contain;
+  flex-shrink: 0;
+  display: block;
+  background: #fff;
+  border-radius: 6px;
+  padding: 2px 6px;
+  box-sizing: content-box;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+.bar-brand-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+}
+.bar-brand h1 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.2;
+  display: block;
+}
+
+/* ============================================================
+   15. TOMBOL & PANEL "LOKASI SAYA" (Geolocation admin)
+   ============================================================ */
+.my-location-wrap {
+  position: absolute;
+  z-index: 1100;
+  right: 14px;
+  bottom: calc(var(--sheet-h) + 14px);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  transition: bottom .25s;
+  pointer-events: none;
+}
+.my-location-wrap > * { pointer-events: auto; }
+
+.my-location-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 10px 14px;
+  border: none;
+  border-radius: 24px;
+  background: var(--brand-blue);
+  color: #fff;
+  font: 700 13px inherit;
+  font-family: inherit;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(27, 95, 170, .35);
+  transition: background .2s ease, transform .1s ease;
+  -webkit-tap-highlight-color: transparent;
+  white-space: nowrap;
+}
+.my-location-btn:hover  { background: var(--brand-blue-dark); }
+.my-location-btn:active { transform: scale(.96); }
+.my-location-btn:disabled { opacity: .7; cursor: wait; }
+
+.my-location-info {
+  display: none;
+  max-width: 240px;
+  padding: 8px 12px;
+  background: #fff;
+  border: 1px solid var(--brand-blue-light);
+  border-left: 4px solid var(--brand-green);
+  border-radius: 10px;
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: #333;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, .12);
+  word-break: break-word;
+}
+.my-location-info.show { display: block; }
+.my-location-info b { color: var(--brand-blue); }
+.my-location-info .coord {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  color: var(--brand-blue-dark);
+}
+.my-location-info .err { color: #c0392b; }
+
+.my-loc-marker { background: transparent; border: none; }
+
+@media (max-width: 360px) {
+  .my-location-btn { padding: 9px 12px; font-size: 12px; min-height: 42px; }
+  .my-location-info { max-width: 200px; font-size: 11px; }
+}
+
+/* ============================================================
+   16. RESPONSIVE HEADER BRAND
+   ============================================================ */
+@media (max-width: 768px) {
+  .brand-logo { height: 40px; max-width: 130px; }
+  .bar-brand h1 { font-size: 14px; }
+}
+@media (max-width: 560px) {
+  .bar { gap: 8px; padding: calc(var(--safe-top) + 8px) 10px 8px 60px; }
+  .brand-logo {
+    height: 34px;
+    max-width: 110px;
+    padding: 1px 4px;
+    border-radius: 5px;
+  }
+  .bar-brand h1 { font-size: 13px; }
+  .bar-right .btn { padding: 6px 10px; font-size: 12px; }
+}
+@media (max-width: 400px) {
+  .brand-logo { height: 30px; max-width: 90px; }
+  .bar-brand h1 { font-size: 12px; }
+}
+@media (max-width: 340px) {
+  .bar { padding: calc(var(--safe-top) + 6px) 8px 6px 56px; gap: 6px; }
+  .brand-logo { height: 26px; max-width: 76px; padding: 1px 3px; }
+  .bar-brand h1 { font-size: 11.5px; }
+  .bar-right .btn { padding: 5px 8px; font-size: 11px; }
+}
+
+/* ============================================================
+   17. PRIORITAS PASIEN — palet profesional
+   ============================================================
+   Catatan: Definisi .pin.president, .pin.vvip-suite, .pin.vvip,
+   .tag.president, .tag.vvip-suite, .tag.vvip, dan .list .item.*.active
+   sudah didefinisikan di section 8, 9, dan 10 di atas.
+   Section ini sengaja tidak menduplikasi untuk menghindari konflik.
+   Style responsive kartu jadwal berobat ada di jadwal_berobat.css.
+   ============================================================ */
+
+/* ============================================================
+   18. REDUCED MOTION GLOBAL
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
