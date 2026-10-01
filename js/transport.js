@@ -1,20 +1,44 @@
 /* ============================================================
    transport.js — Satu antarmuka kirim/terima lokasi realtime.
-   - WS_URL terisi -> WebSocket (live sungguhan, auto-reconnect)
-   - WS_URL kosong -> BroadcastChannel (demo / offline)
-   ============================================================ */
+   ------------------------------------------------------------
+   Mode:
+     • WS_URL terisi  -> WebSocket (live, auto-reconnect + ping)
+     • WS_URL kosong  -> BroadcastChannel (demo antar-tab)
 
-/* eslint-disable no-unused-vars */
+   API:
+     const t = createTransport(onMessage, onStatus);
+     t.send({...})        — kirim pesan
+     t.close()            — tutup koneksi (tidak reconnect lagi)
+     t.isOpen             — true kalau sedang terhubung (getter)
+     t.mode               — "ws" | "demo" | "none"
+   ============================================================ */
+/* global CONFIG */
+
 function createTransport(onMessage, onStatus) {
   "use strict";
 
+  /* ---------- Guard & helper ---------- */
   var status = (typeof onStatus === "function") ? onStatus : function () {};
-  var cfg    = (typeof CONFIG !== "undefined" && CONFIG) ? CONFIG : {};
-  var wsUrl  = cfg.WS_URL || "";
+  var emit = function (msg) {
+    if (typeof onMessage !== "function") return;
+    try { onMessage(msg); }
+    catch (e) { console.warn("[transport] onMessage error:", e); }
+  };
+
+  var cfg   = (typeof CONFIG !== "undefined" && CONFIG) ? CONFIG : {};
+  var wsUrl = cfg.WS_URL || "";
 
   /* Paksa wss:// kalau halaman di-serve via HTTPS (hindari mixed content) */
   if (location.protocol === "https:" && wsUrl.indexOf("ws://") === 0) {
     wsUrl = wsUrl.replace("ws://", "wss://");
+  }
+
+  /* Status hanya di-emit kalau benar-benar berubah (hindari spam) */
+  var lastStatus = "";
+  function setStatus(s) {
+    if (s === lastStatus) return;
+    lastStatus = s;
+    status(s);
   }
 
   /* ============================================================
@@ -28,7 +52,7 @@ function createTransport(onMessage, onStatus) {
     var lastPong     = Date.now();
     var closedByUser = false;
     var queue        = [];
-    var MAX_QUEUE    = 50;
+    var MAX_QUEUE    = 30;      // cukup untuk reconnect singkat
     var PING_EVERY   = 25000;   // 25 detik
     var PONG_TIMEOUT = 60000;   // 60 detik tanpa pong -> anggap mati
 
@@ -41,10 +65,7 @@ function createTransport(onMessage, onStatus) {
     }
 
     function stopPing() {
-      if (pingTimer) {
-        clearInterval(pingTimer);
-        pingTimer = null;
-      }
+      if (pingTimer) { clearInterval(pingTimer); pingTimer = null; }
     }
 
     function startPing() {
@@ -59,16 +80,15 @@ function createTransport(onMessage, onStatus) {
           return;
         }
 
-        try {
-          ws.send(JSON.stringify({ type: "ping", t: Date.now() }));
-        } catch (e) { /* diamkan */ }
+        try { ws.send(JSON.stringify({ type: "ping", t: Date.now() })); }
+        catch (e) { /* diamkan */ }
       }, PING_EVERY);
     }
 
     function scheduleReconnect() {
       if (closedByUser) return;
       retry = Math.min(retry + 1, 6);
-      var delay = Math.min(1000 * Math.pow(2, retry), 30000);
+      var delay = Math.min(1000 * Math.pow(2, retry), 30000); // max 30 detik
       setTimeout(connect, delay);
     }
 
@@ -77,7 +97,7 @@ function createTransport(onMessage, onStatus) {
       if (connecting || closedByUser) return;
       connecting = true;
 
-      /* Tutup WS lama tanpa memicu onclose */
+      /* Bersihkan socket lama tanpa memicu onclose */
       try {
         if (ws) {
           ws.onclose = null;
@@ -94,7 +114,7 @@ function createTransport(onMessage, onStatus) {
         socket = new WebSocket(wsUrl);
       } catch (err) {
         connecting = false;
-        status("error");
+        setStatus("offline");
         scheduleReconnect();
         return;
       }
@@ -103,7 +123,7 @@ function createTransport(onMessage, onStatus) {
       socket.onopen = function () {
         connecting = false;
         retry = 0;
-        status("online");
+        setStatus("online");
         flush();
         startPing();
       };
@@ -112,10 +132,9 @@ function createTransport(onMessage, onStatus) {
         var data;
         try { data = JSON.parse(ev.data); }
         catch (e) { return; }
-
         if (!data || typeof data !== "object") return;
 
-        /* Pong — tandai server masih hidup */
+        /* Pong dari server — tandai masih hidup */
         if (data.type === "pong") {
           lastPong = Date.now();
           return;
@@ -123,23 +142,22 @@ function createTransport(onMessage, onStatus) {
 
         /* Ping dari server — balas pong */
         if (data.type === "ping") {
-          try {
-            socket.send(JSON.stringify({ type: "pong", t: Date.now() }));
-          } catch (e) {}
+          try { socket.send(JSON.stringify({ type: "pong", t: Date.now() })); }
+          catch (e) {}
           return;
         }
 
-        onMessage(data);
+        emit(data);
       };
 
       socket.onerror = function () {
-        status("error");
+        /* Biarkan onclose yang menangani status & reconnect */
       };
 
       socket.onclose = function () {
         connecting = false;
         stopPing();
-        status("offline");
+        setStatus("offline");
         scheduleReconnect();
       };
     }
@@ -147,22 +165,20 @@ function createTransport(onMessage, onStatus) {
     connect();
 
     /* ---------- Public API ---------- */
-    return {
+    var api = {
       send: function (msg) {
         var s;
         try { s = JSON.stringify(msg); }
         catch (e) { return; }
 
         if (ws && ws.readyState === 1) {
-          try { ws.send(s); }
-          catch (e) {
-            queue.push(s);
-            if (queue.length > MAX_QUEUE) queue.shift();
-          }
-        } else {
-          queue.push(s);
-          if (queue.length > MAX_QUEUE) queue.shift();
+          try { ws.send(s); return; }
+          catch (e) { /* fallthrough ke queue */ }
         }
+
+        /* Simpan untuk dikirim saat reconnect */
+        queue.push(s);
+        if (queue.length > MAX_QUEUE) queue.shift();
       },
       close: function () {
         closedByUser = true;
@@ -178,56 +194,72 @@ function createTransport(onMessage, onStatus) {
         } catch (e) {}
         ws = null;
         queue.length = 0;
+        setStatus("closed");
       },
-      get isOpen() {
-        return !!(ws && ws.readyState === 1);
-      }
+      get isOpen() { return !!(ws && ws.readyState === 1); },
+      mode: "ws"
     };
+
+    window.transport = api; // debug: cek di console → window.transport.mode
+    return api;
   }
 
   /* ============================================================
-     MODE 2 — BroadcastChannel (demo / offline / fallback)
+     MODE 2 — BroadcastChannel (demo / offline)
      ============================================================ */
   if (typeof BroadcastChannel === "undefined") {
-    status("unsupported");
-    return {
+    setStatus("unsupported");
+    var noop = {
       send: function () {},
       close: function () {},
-      isOpen: false
+      get isOpen() { return false; },
+      mode: "none"
     };
+    window.transport = noop;
+    return noop;
   }
 
   var bc;
   try {
     bc = new BroadcastChannel("pelacak-pasien");
   } catch (e) {
-    status("unsupported");
-    return {
+    setStatus("unsupported");
+    var noop2 = {
       send: function () {},
       close: function () {},
-      isOpen: false
+      get isOpen() { return false; },
+      mode: "none"
     };
+    window.transport = noop2;
+    return noop2;
   }
 
   bc.onmessage = function (ev) {
     var data = ev && ev.data;
     if (!data || typeof data !== "object") return;
-    onMessage(data);
+    emit(data);
   };
 
   if ("onmessageerror" in bc) {
     bc.onmessageerror = function () { /* diamkan */ };
   }
 
-  status("demo");
+  setStatus("demo");
 
-  return {
+  var apiDemo = {
     send: function (msg) {
       try { bc.postMessage(msg); } catch (e) {}
     },
     close: function () {
       try { bc.close(); } catch (e) {}
+      setStatus("closed");
     },
-    isOpen: true
+    get isOpen() { return true; },
+    mode: "demo"
   };
+  window.transport = apiDemo;
+  return apiDemo;
 }
+
+/* Expose global (opsional, berguna untuk debugging) */
+window.createTransport = createTransport;

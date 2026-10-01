@@ -3,13 +3,10 @@
   ===================================================================
   index.html — Monitoring Pasien Prioritas — RS Pelabuhan Jakarta
   ===================================================================
-  Modul "Jadwal Berobat Pasien" DIPISAH dan di-LOAD OTOMATIS:
-    • CSS    : ../css/jadwal_berobat.css (dimuat di <head>)
-    • Markup : jadwal_berobat.html      (di-fetch + di-inject via JS)
-    • Backend: jadwal_berobat.php       (opsional, REST API)
-
-  Loader otomatis ada di <script> paling bawah (lihat bagian
-  "LOADER JADWAL BEROBAT"). Ubah JADWAL_SOURCES kalau path berbeda.
+  • Peta: Leaflet + tile Geoapify (dari config.php)
+  • Peta dibuat SEKALI di sini → window.map
+  • Semua logika marker/list/animation ada di inline script di bawah
+  • dashboard.js TIDAK dipakai (menghindari konflik ganda)
   ===================================================================
 -->
 <html lang="id">
@@ -24,8 +21,11 @@
 
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
   <link rel="stylesheet" href="../css/style.css">
-  <!-- CSS khusus Jadwal Berobat (dipisah dari style.css) -->
   <link rel="stylesheet" href="../css/jadwal_berobat.css">
+
+  <style>
+    .pin.moving .pulse { animation-duration: 0.9s; }
+  </style>
 </head>
 <body>
   <header class="bar">
@@ -81,25 +81,76 @@
       <p id="summary" class="summary">Belum ada pasien yang membagikan lokasi.</p>
       <ul id="list" class="list"></ul>
 
-      <!-- =========================================================
-           JADWAL BEROBAT akan di-inject di sini secara otomatis
-           oleh loader di bagian bawah file (lihat #JADWAL_BEROBAT_SLOT).
-           ========================================================= -->
+      <!-- Status koneksi (dipakai inline script) -->
+      <div id="connStatus" class="conn" aria-live="polite"></div>
+
+      <!-- Slot untuk modul Jadwal Berobat (di-inject otomatis) -->
       <!-- #JADWAL_BEROBAT_SLOT# -->
     </aside>
   </main>
 
-  <!-- =========================================================
-       MODAL TAMBAH JADWAL akan di-inject otomatis ke <body>
-       oleh loader (id target: #scheduleModal).
-       ========================================================= -->
+  <!-- Slot modal Jadwal Berobat -->
   <!-- #JADWAL_BEROBAT_MODAL_SLOT# -->
 
+  <!-- ============================================================
+       LOAD LIBRARY + CONFIG (urutan wajib: Leaflet → CONFIG → transport)
+       ============================================================ -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
   <script src="../config.php"></script>
   <script src="../js/transport.js"></script>
-  <script src="../js/dashboard.js"></script>
 
+  <!-- ============================================================
+       INISIALISASI PETA — Leaflet + tile Geoapify dari CONFIG
+       WAJIB ada di sini, SEBELUM inline script di bawah
+       ============================================================ -->
+  <script>
+    (function () {
+      'use strict';
+
+      var cfg    = window.CONFIG || {};
+      var center = cfg.MAP_CENTER || { lat: -6.125022, lng: 106.917765 };
+      var zoom   = cfg.MAP_ZOOM   || 13;
+
+      // Tile URL dari config.php (Geoapify).
+      // Fallback ke OSM kalau CONFIG kosong / TILE_URL kosong.
+      var tileUrl = cfg.TILE_URL
+        || 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+
+      var tileAttr = cfg.TILE_ATTRIBUTION
+        || '&copy; OpenStreetMap contributors &copy; Geoapify';
+
+      // Buat peta, simpan ke window.map (GLOBAL)
+      window.map = L.map('map', { zoomControl: false })
+                    .setView([center.lat, center.lng], zoom);
+
+      L.control.zoom({ position: 'bottomright' }).addTo(window.map);
+
+      L.tileLayer(tileUrl, {
+        maxZoom: 20,
+        attribution: tileAttr
+      }).addTo(window.map);
+
+      // Marker rumah sakit (tujuan)
+      var hosp = cfg.HOSPITAL;
+      if (hosp && hosp.lat != null && hosp.lng != null) {
+        L.marker([hosp.lat, hosp.lng], {
+          icon: L.divIcon({
+            className: '',
+            html: '<div class="pin hosp">+</div>',
+            iconSize: [34, 34],
+            iconAnchor: [17, 17]
+          })
+        }).addTo(window.map).bindTooltip(hosp.name || 'Rumah Sakit');
+      }
+
+      console.info('[map] Provider:',
+        tileUrl.indexOf('geoapify') !== -1 ? 'Geoapify' : 'OpenStreetMap');
+    })();
+  </script>
+
+  <!-- ============================================================
+       LOGIKA APLIKASI (marker, list, animasi, transport)
+       ============================================================ -->
   <script>
     (function () {
       'use strict';
@@ -180,7 +231,6 @@
       function lockBody() {
         lockCount++;
         if (lockCount > 1) return;
-
         if (isIOS) {
           savedScrollY = window.scrollY || window.pageYOffset || 0;
           prevBodyStyle = {
@@ -202,7 +252,6 @@
       function unlockBody() {
         lockCount = Math.max(0, lockCount - 1);
         if (lockCount > 0) return;
-
         if (isIOS) {
           document.body.style.position = prevBodyStyle.position || '';
           document.body.style.top = prevBodyStyle.top || '';
@@ -242,9 +291,64 @@
       }
 
       /* =========================================================
-         6. JADWAL BEROBAT — di-load otomatis dari file terpisah
-            (lihat loader di bagian bawah)
+         6. ANIMASI MARKER
          ========================================================= */
+      function animateMarkerTo(marker, newLat, newLng, durationMs, onDone) {
+        if (!marker || typeof marker.getLatLng !== 'function') {
+          if (typeof onDone === 'function') onDone();
+          return;
+        }
+
+        var start    = marker.getLatLng();
+        var startLat = start.lat, startLng = start.lng;
+        var endLat   = Number(newLat), endLng = Number(newLng);
+        if (isNaN(endLat) || isNaN(endLng)) {
+          if (typeof onDone === 'function') onDone();
+          return;
+        }
+
+        var dist = Math.hypot(endLat - startLat, endLng - startLng);
+        if (dist < 1e-5) {
+          marker.setLatLng([endLat, endLng]);
+          if (typeof onDone === 'function') onDone();
+          return;
+        }
+
+        var dur = typeof durationMs === 'number' ? durationMs : 900;
+        var t0  = performance.now();
+
+        if (marker.__animFrame) {
+          cancelAnimationFrame(marker.__animFrame);
+          marker.__animFrame = null;
+        }
+        if (marker.__animDone) {
+          try { marker.__animDone(); } catch (e) {}
+          marker.__animDone = null;
+        }
+
+        var el = marker.getElement && marker.getElement();
+        if (el) el.classList.add('moving');
+
+        function step(now) {
+          var t = Math.min(1, (now - t0) / dur);
+          var e = 1 - Math.pow(1 - t, 3);
+          var lat = startLat + (endLat - startLat) * e;
+          var lng = startLng + (endLng - startLng) * e;
+          marker.setLatLng([lat, lng]);
+
+          if (t < 1) {
+            marker.__animFrame = requestAnimationFrame(step);
+          } else {
+            marker.__animFrame = null;
+            marker.__animDone = null;
+            var elEnd = marker.getElement && marker.getElement();
+            if (elEnd) elEnd.classList.remove('moving');
+            if (typeof onDone === 'function') onDone();
+          }
+        }
+        marker.__animDone = onDone;
+        marker.__animFrame = requestAnimationFrame(step);
+      }
 
       /* =========================================================
          7. TOMBOL EDIT
@@ -559,9 +663,19 @@
           marker.bindPopup(popup);
           window.patientMarkers[id] = marker;
         } else {
-          marker.setLatLng([lat, lng]);
+          var wasOpen = (typeof marker.isPopupOpen === 'function') && marker.isPopupOpen();
           marker.setIcon(icon);
           marker.setPopupContent(popup);
+
+          var from = marker.getLatLng();
+          var farAway = Math.hypot(lat - from.lat, lng - from.lng) > 0.002;
+          var dur = farAway ? 1500 : 900;
+
+          animateMarkerTo(marker, lat, lng, dur, function () {
+            if (wasOpen) {
+              try { marker.openPopup(); } catch (e) {}
+            }
+          });
         }
 
         upsertPatientListItem(patientData[id]);
@@ -650,7 +764,10 @@
         var id = data.id;
         var marker = window.patientMarkers[id];
         if (marker && window.map && typeof window.map.removeLayer === 'function') {
-          try { window.map.removeLayer(marker); } catch (e) {}
+          try {
+            if (marker.__animFrame) cancelAnimationFrame(marker.__animFrame);
+            window.map.removeLayer(marker);
+          } catch (e) {}
         }
         delete window.patientMarkers[id];
         delete patientData[id];
@@ -711,7 +828,18 @@
             function (state) {
               var connEl = $('connStatus');
               if (connEl) {
-                connEl.textContent = String(state || '').toUpperCase();
+                // Sembunyikan total jika state adalah 'demo' (tidak dipakai)
+                if (state === 'demo') {
+                  connEl.style.display = 'none';
+                  connEl.textContent = '';
+                  connEl.className = 'conn';
+                  return;
+                }
+                
+                // Tampilkan kembali untuk state selain 'demo'
+                connEl.style.display = '';
+                var map = { online: 'Terhubung', offline: 'Terputus', unsupported: 'Tidak didukung' };
+                connEl.textContent = map[state] || state || '';
                 connEl.className = 'conn ' + state;
               }
             }
@@ -809,26 +937,17 @@
         markers: window.patientMarkers,
         data: patientData,
         transport: function () { return rxTransport; },
-        /* utility — dipakai modul jadwal berobat */
         lockBody: lockBody,
         unlockBody: unlockBody,
         syncSheet: syncSheet,
-        fixMap: fixMap
+        fixMap: fixMap,
+        animateMarkerTo: animateMarkerTo
       };
     })();
   </script>
 
   <!-- =================================================================
        LOADER JADWAL BEROBAT
-       =================================================================
-       Otomatis:
-         1. Fetch jadwal_berobat.html (coba beberapa path)
-         2. Inject .schedule-section → ke #sidePanel
-         3. Inject .modal-overlay#scheduleModal → ke <body>
-         4. Eksekusi ulang semua <script> inline
-         5. Trigger syncSheet() agar tinggi sheet dihitung ulang
-
-       Ubah array JADWAL_SOURCES kalau lokasi file berbeda.
        ================================================================= -->
   <script>
     (function () {
@@ -837,14 +956,12 @@
       if (window.__JADWAL_LOADER_INIT__) return;
       window.__JADWAL_LOADER_INIT__ = true;
 
-      /* ---------- KONFIGURASI PATH (urut prioritas) ---------- */
       var JADWAL_SOURCES = [
-        'jadwal_berobat.html',        // ← 1) folder yang sama dengan index.html
-        '../jadwal_berobat.html',     // ← 2) folder induk
-        'jadwal_berobat_view.php'     // ← 3) fallback (jika server render PHP)
+        'jadwal_berobat.html',
+        '../jadwal_berobat.html',
+        'jadwal_berobat_view.php'
       ];
 
-      /* ---------- Helper ---------- */
       function fetchFirstAvailable(sources, index) {
         if (index >= sources.length) {
           return Promise.reject(new Error('Semua path gagal: ' + sources.join(', ')));
@@ -854,8 +971,6 @@
           .then(function (res) {
             if (!res.ok) throw new Error('HTTP ' + res.status);
             return res.text().then(function (txt) {
-              // Kalau server kembalikan PHP mentah (misal .php diserve statis),
-              // kita deteksi dari keberadaan "<?php" di awal — anggap gagal.
               if (/^\s*<\?php/i.test(txt)) {
                 throw new Error('Bukan HTML (PHP source mentah)');
               }
@@ -868,41 +983,28 @@
           });
       }
 
-      /* ---------- Inject markup ---------- */
       function injectMarkup(parsedDoc) {
         var injected = { section: false, modal: false, scripts: 0 };
 
-        /* 1) Section jadwal → #sidePanel */
         var section = parsedDoc.querySelector('.schedule-section');
         var sidePanel = document.getElementById('sidePanel');
         if (section && sidePanel) {
-          // Hapus placeholder komentar (opsional, biarkan saja)
           sidePanel.appendChild(section);
           injected.section = true;
-        } else if (!section) {
-          console.warn('[jadwal_berobat] .schedule-section tidak ditemukan.');
-        } else if (!sidePanel) {
-          console.warn('[jadwal_berobat] #sidePanel tidak ditemukan.');
         }
 
-        /* 2) Modal → <body> */
         var modal = parsedDoc.querySelector('#scheduleModal')
                  || parsedDoc.querySelector('.modal-overlay');
         if (modal) {
-          // Hindari duplikat
           if (!document.getElementById(modal.id || 'scheduleModal')) {
             document.body.appendChild(modal);
             injected.modal = true;
           }
-        } else {
-          console.warn('[jadwal_berobat] .modal-overlay#scheduleModal tidak ditemukan.');
         }
 
-        /* 3) Eksekusi ulang <script> inline (lewati yang punya src) */
         var scripts = parsedDoc.querySelectorAll('script');
         scripts.forEach(function (old) {
           if (old.src) {
-            // Muat ulang script eksternal
             var se = document.createElement('script');
             se.src = old.src;
             if (old.async) se.async = true;
@@ -911,7 +1013,6 @@
             return;
           }
           var inline = document.createElement('script');
-          // Pertahankan atribut type kalau ada (mis. module)
           if (old.type) inline.type = old.type;
           inline.textContent = old.textContent;
           document.body.appendChild(inline);
@@ -921,7 +1022,6 @@
         return injected;
       }
 
-      /* ---------- Boot ---------- */
       function loadJadwalBerobat() {
         fetchFirstAvailable(JADWAL_SOURCES, 0)
           .then(function (result) {
@@ -935,7 +1035,6 @@
               ', inline-scripts=' + info.scripts
             );
 
-            /* 4) Recalc sheet height setelah markup masuk */
             setTimeout(function () {
               if (window.__dashboard && typeof window.__dashboard.syncSheet === 'function') {
                 try { window.__dashboard.syncSheet(); } catch (e) {}
@@ -947,19 +1046,12 @@
           })
           .catch(function (err) {
             console.error('[jadwal_berobat] GAGAL memuat modul:', err.message);
-            console.info(
-              '[jadwal_berobat] Pastikan salah satu file berikut ada:\n' +
-              JADWAL_SOURCES.map(function (s) { return '  • ' + s; }).join('\n')
-            );
           });
       }
 
-      /* Jalankan setelah dashboard.js selesai init
-         (dashboard.js adalah script inline di atas, jadi sudah selesai). */
       if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', loadJadwalBerobat, { once: true });
       } else {
-        // Defer 0 — biarkan thread utama selesai dulu
         setTimeout(loadJadwalBerobat, 0);
       }
     })();

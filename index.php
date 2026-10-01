@@ -45,10 +45,10 @@ $csrf = $_SESSION['csrf'];
 // 3. KONFIGURASI RUMAH SAKIT
 // =========================================================
 $HOSPITAL = [
-    'name'           => 'RS Pelabuhan Jakarta',
+    'name'           => 'PT RUMAH SAKIT PELABUHAN',
     'tagline'        => 'IHC RSPJ — Layanan Kesehatan Terpadu',
-    'hotlineDisplay' => '021-4300000',
-    'hotlineE164'    => '+62214300000',
+    'hotlineDisplay' => '(021) 4403026',
+    'hotlineE164'    => '(021) 4403026',
     'whatsappE164'   => '6281234567890',
     'address'        => 'Jl. Pelabuhan No. 1, Jakarta',
     'open24h'        => true,
@@ -82,7 +82,7 @@ try {
                         'label' => 'Jadwal Berobat',
                         'desc'  => 'Lihat & kelola jadwal kunjungan Anda',
                         'icon'  => '📅',
-                        'url'   => 'jadwal.php',
+                        'url'   => 'jadwal_berobat.php',
                     ],
                     [
                         'id'    => 'hotline',

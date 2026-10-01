@@ -1,0 +1,42 @@
+[
+    {
+        "id": "P001",
+        "name": "Budi Santoso",
+        "poli": "Poliklinik Penyakit Dalam, Lantai 2",
+        "note": "Kontrol gula darah puasa, bawa hasil lab",
+        "time": "09:30",
+        "control": { "type": "weekly", "days_of_week": [1, 4] }
+    },
+    {
+        "id": "P002",
+        "name": "Siti Aminah",
+        "poli": "Poliklinik Kandungan, Lantai 3",
+        "note": "USG kehamilan trimester 2",
+        "time": "14:00",
+        "control": { "type": "monthly", "day_of_month": 3 }
+    },
+    {
+        "id": "P003",
+        "name": "Andi Wijaya",
+        "poli": "Poliklinik Mata, Lantai 1",
+        "note": "Pemeriksaan tekanan bola mata",
+        "time": "08:00",
+        "control": { "type": "monthly", "day_of_month": 8 }
+    },
+    {
+        "id": "P004",
+        "name": "Ratna Dewi",
+        "poli": "Poliklinik THT, Lantai 2",
+        "note": "Kontrol pasca operasi tonsil",
+        "time": "13:30",
+        "control": { "type": "once", "date": "2026-10-15" }
+    },
+    {
+        "id": "P005",
+        "name": "Hendra Gunawan",
+        "poli": "Poliklinik Jantung, Lantai 4",
+        "note": "EKG rutin",
+        "time": "10:00",
+        "control": { "type": "weekly", "days_of_week": [2] }
+    }
+]
