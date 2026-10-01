@@ -25,19 +25,115 @@
 
   <style>
     .pin.moving .pulse { animation-duration: 0.9s; }
+
+    /* ============================================================
+       HEADER — perbaikan layout logo & penamaan
+       ============================================================ */
+    header.bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 8px 14px;
+      min-height: 62px;
+      box-sizing: border-box;
+    }
+
+    header.bar .bar-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+      flex: 1 1 auto;
+    }
+
+    /* Kotak putih pembungkus logo — supaya logo IHC tetap proporsional */
+    header.bar .brand-logo-wrap {
+      flex: 0 0 auto;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: #ffffff;
+      border-radius: 10px;
+      padding: 4px 8px;
+      height: 44px;
+      box-sizing: border-box;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+    }
+
+    /* Logo: biarkan tinggi yang mengatur, lebar otomatis (tidak gepeng) */
+    header.bar .brand-logo {
+      display: block;
+      height: 34px;
+      width: auto;
+      max-width: 132px;
+      object-fit: contain;
+    }
+
+    header.bar .bar-brand-text {
+      min-width: 0;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    header.bar .bar-brand-text h1 {
+      margin: 0;
+      font-size: 15px;
+      line-height: 1.15;
+      font-weight: 700;
+      letter-spacing: 0.2px;
+      color: #ffffff;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    header.bar .bar-brand-text .bar-subtitle {
+      margin: 2px 0 0;
+      font-size: 11px;
+      line-height: 1;
+      font-weight: 400;
+      color: rgba(255, 255, 255, 0.85);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    header.bar .bar-right {
+      flex: 0 0 auto;
+      display: flex;
+      align-items: center;
+    }
+
+    /* Responsif untuk layar kecil */
+    @media (max-width: 420px) {
+      header.bar { padding: 6px 10px; min-height: 56px; gap: 8px; }
+      header.bar .brand-logo-wrap { height: 38px; padding: 3px 6px; border-radius: 8px; }
+      header.bar .brand-logo { height: 30px; max-width: 108px; }
+      header.bar .bar-brand-text h1 { font-size: 13px; }
+      header.bar .bar-brand-text .bar-subtitle { font-size: 10px; }
+    }
+
+    @media (max-width: 340px) {
+      header.bar .bar-brand-text .bar-subtitle { display: none; }
+    }
   </style>
 </head>
 <body>
   <header class="bar">
     <div class="bar-brand">
-      <img
-        src="../assets/img/logo IHC RSPJ.png"
-        alt="RS Pelabuhan Jakarta"
-        class="brand-logo"
-        width="150" height="44"
-        onerror="this.style.display='none'">
+      <span class="brand-logo-wrap">
+        <img
+          src="../assets/img/logo IHC RSPJ.png"
+          alt="Logo RS Pelabuhan Jakarta"
+          class="brand-logo"
+          onerror="this.parentNode.style.display='none'">
+      </span>
       <div class="bar-brand-text">
         <h1>Monitoring Pasien Prioritas</h1>
+        <p class="bar-subtitle">RS Pelabuhan Jakarta</p>
       </div>
     </div>
 
@@ -835,7 +931,7 @@
                   connEl.className = 'conn';
                   return;
                 }
-                
+
                 // Tampilkan kembali untuk state selain 'demo'
                 connEl.style.display = '';
                 var map = { online: 'Terhubung', offline: 'Terputus', unsupported: 'Tidak didukung' };
