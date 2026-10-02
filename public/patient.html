@@ -20,7 +20,6 @@
       --font-stack:Roboto, system-ui, -apple-system, "Segoe UI", sans-serif;
       --safe-top:env(safe-area-inset-top,0px); --safe-bottom:env(safe-area-inset-bottom,0px);
       --safe-left:env(safe-area-inset-left,0px); --safe-right:env(safe-area-inset-right,0px);
-      /* warna tier (diubah lewat JS sesuai prioritas) */
       --tier-a:#144A87; --tier-b:#1B5FAA; --tier-ink:#fff; --tier-soft:#E6EEF8; --tier-line:#B5CCE5;
     }
     .is-ios { --anim-slide:schedSlideUpIOS 0.32s cubic-bezier(0.32,0.72,0,1); --font-stack:-apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif; }
@@ -254,9 +253,15 @@
       <label for="name">Nama pasien</label>
       <input id="name" type="text" autocomplete="name" inputmode="text" placeholder="Contoh: Budi Santoso">
 
-      <!-- ▼▼▼ NO. MR (sinkron dengan jadwal_berobat.html) ▼▼▼ -->
+      <!-- ▼▼▼ NO. MR — HANYA ANGKA ▼▼▼ -->
       <label for="mr">No. MR (Rekam Medis)</label>
-      <input id="mr" type="text" autocomplete="off" inputmode="numeric" placeholder="Contoh: 00-12-34-56">
+      <input id="mr"
+             type="text"
+             autocomplete="off"
+             inputmode="numeric"
+             pattern="[0-9]*"
+             maxlength="20"
+             placeholder="Contoh: 00123456">
       <!-- ▲▲▲ /NO. MR ▲▲▲ -->
 
       <button id="toggle" class="btn wide" type="button">Mulai bagikan lokasi</button>
@@ -279,7 +284,7 @@
       <div class="sa-hero" id="schedHero">
         <div class="sa-grab" aria-hidden="true"></div>
 
-        <!-- ▼▼▼ CHIP: TIER PRIORITAS + NO. MR (BARU) ▼▼▼ -->
+        <!-- ▼▼▼ CHIP: TIER PRIORITAS + NO. MR ▼▼▼ -->
         <div class="sa-chip-row">
           <span class="sa-chip">
             <span id="schedTierIcon" aria-hidden="true"></span>
@@ -378,9 +383,7 @@
         else fn();
       }
 
-      /* ========== 2. UI DASAR (prioritas otomatis dari data jadwal) ========== */
-
-      /* ========== 3. STATE SHARING ========== */
+      /* ========== 2. STATE SHARING ========== */
       var btn = $('toggle');
       var st = $('state');
       var isSharing = false;
@@ -392,7 +395,7 @@
       }
       setSharing(false);
 
-      /* ========== 4. VIEWPORT FIX — Android ========== */
+      /* ========== 3. VIEWPORT FIX — Android ========== */
       if (isAndroid) {
         var setVH = function () { rootEl.style.setProperty('--vh', (window.innerHeight * 0.01) + 'px'); };
         setVH();
@@ -409,7 +412,7 @@
         }
       }
 
-      /* ========== 5. SCROLL LOCK ========== */
+      /* ========== 4. SCROLL LOCK ========== */
       var lockCount = 0, savedScrollY = 0, prevBodyStyle = {};
       function lockBody() {
         lockCount++;
@@ -444,6 +447,41 @@
         document.body.style.position = ''; document.body.style.top = '';
         document.body.style.width = ''; document.body.style.overflow = '';
       });
+
+      /* ========== 5. INPUT NO. MR: HANYA ANGKA ========== */
+      function sanitizeMR(v) {
+        return String(v == null ? '' : v).replace(/[^0-9]/g, '');
+      }
+      function bindMRInput(el) {
+        if (!el) return;
+        el.addEventListener('input', function () {
+          var cleaned = sanitizeMR(el.value);
+          if (el.value !== cleaned) el.value = cleaned;
+        });
+        el.addEventListener('paste', function (e) {
+          var txt = (e.clipboardData || window.clipboardData);
+          if (!txt) return;
+          var pasted = txt.getData('text') || '';
+          if (/[^0-9]/.test(pasted)) {
+            e.preventDefault();
+            var cleaned = sanitizeMR(pasted);
+            var start = el.selectionStart || 0;
+            var end = el.selectionEnd || 0;
+            var val = el.value || '';
+            var next = val.slice(0, start) + cleaned + val.slice(end);
+            el.value = sanitizeMR(next);
+            var pos = start + cleaned.length;
+            try { el.setSelectionRange(pos, pos); } catch (err) {}
+            el.dispatchEvent(new Event('input', { bubbles: true }));
+          }
+        });
+        /* Blokir tombol selain angka (keyboard fisik) */
+        el.addEventListener('keypress', function (e) {
+          if (e.key && e.key.length === 1 && !/[0-9]/.test(e.key) && !e.ctrlKey && !e.metaKey) {
+            e.preventDefault();
+          }
+        });
+      }
 
       /* ========== 6. MODAL HOTLINE ========== */
       var hotlineNumberEl = $('hotlineNumber');
@@ -610,9 +648,9 @@
         return t;
       }
 
-      /* ✅ Isi / sembunyikan chip No. MR di hero */
+      /* Isi / sembunyikan chip No. MR di hero */
       function setHeroMR(mr) {
-        var val = String(mr || '').trim();
+        var val = sanitizeMR(mr);
         if (!mrChipEl || !mrValueEl) return;
         if (val) {
           mrValueEl.textContent = val;
@@ -715,7 +753,7 @@
       function buildMRChip(mr) {
         var chip = el('span', 'sa-mr');
         var lbl = el('span', 'sa-mr-label', 'No. MR');
-        var val = el('span', 'sa-mr-value', String(mr));
+        var val = el('span', 'sa-mr-value', sanitizeMR(mr));
         chip.appendChild(lbl);
         chip.appendChild(val);
         return chip;
@@ -731,7 +769,6 @@
         top.appendChild(el('span', 'sa-badge ' + badge.cls, badge.text));
         card.appendChild(top);
 
-        /* Chip No. MR juga di body kartu (redundan & konsisten) */
         if (item.mr) card.appendChild(buildMRChip(item.mr));
 
         card.appendChild(el('div', 'sa-when', formatTanggal(item.date) + (item.time ? ' · ' + item.time : '')));
@@ -750,8 +787,8 @@
 
         var line2 = el('div', 'sa-line2');
         if (item.mr) {
-          var miniMr = el('span', 'mini-mr', 'MR ' + item.mr);
-          miniMr.setAttribute('aria-label', 'No. MR ' + item.mr);
+          var miniMr = el('span', 'mini-mr', 'MR ' + sanitizeMR(item.mr));
+          miniMr.setAttribute('aria-label', 'No. MR ' + sanitizeMR(item.mr));
           line2.appendChild(miniMr);
         }
         line2.appendChild(el('span', 'mini-name', (item.name || 'Pasien') + ' — ' + (item.place || '-')));
@@ -788,12 +825,10 @@
         var tier = applyTier(tierKey);
         var first = upcoming[0];
         var patientName = (first.name || getName() || '').trim();
-        var patientMR   = (first.mr   || getMR()  || '').trim();
+        var patientMR   = sanitizeMR(first.mr || getMR() || '');
 
-        /* ✅ Isi chip No. MR di hero */
         setHeroMR(patientMR);
 
-        /* ✅ Judul: tampilkan nama + No. MR (jika ada) */
         var titleLabel = patientName;
         if (patientMR) titleLabel += (titleLabel ? ' · MR ' : 'MR ') + patientMR;
         titleEl.textContent = (titleLabel ? greeting() + ', ' + titleLabel : greeting()) + '.';
@@ -823,7 +858,7 @@
       /* Cek jadwal — cocokkan MR dulu, lalu nama */
       function checkSchedulesForPatient() {
         var name = getName().toLowerCase();
-        var mr   = getMR().toLowerCase();
+        var mr   = sanitizeMR(getMR()).toLowerCase();
 
         var hasName = name.length >= 3;
         var hasMR   = mr.length   >= 3;
@@ -834,7 +869,7 @@
 
         var filtered = all.filter(function (item) {
           var itemName = (item.name || '').toLowerCase();
-          var itemMR   = (item.mr   || '').toLowerCase();
+          var itemMR   = sanitizeMR(item.mr || '').toLowerCase();
           if (hasMR && itemMR && itemMR === mr) return true;
           if (hasName && itemName.indexOf(name) !== -1) return true;
           return false;
@@ -844,6 +879,9 @@
 
       var nameEl = $('name');
       var mrEl   = $('mr');
+
+      /* Pasang filter angka ke input No. MR */
+      bindMRInput(mrEl);
 
       var debounceTimer;
       function scheduleCheck() {
@@ -880,7 +918,7 @@
         }
       }
       function getName() { var e = $('name'); return e ? e.value.trim() : ''; }
-      function getMR()   { var e = $('mr');   return e ? e.value.trim() : ''; }
+      function getMR()   { var e = $('mr');   return e ? sanitizeMR(e.value) : ''; }
       function getPriority() { return DEFAULT_TIER; }
 
       /* ========== 9. TRANSPORT + WATCH GEOLOKASI ========== */
@@ -1035,7 +1073,7 @@
           return;
         }
         if (!getMR()) {
-          alert('Isi No. MR pasien terlebih dahulu.');
+          alert('Isi No. MR pasien (hanya angka) terlebih dahulu.');
           if (mrEl) mrEl.focus();
           return;
         }

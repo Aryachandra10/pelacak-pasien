@@ -61,10 +61,11 @@
         <input type="text" id="schedName" placeholder="Contoh: Budi Santoso"
                autocomplete="name">
 
-        <!-- ▼▼▼ NO. MR (BARU) ▼▼▼ -->
+        <!-- ▼▼▼ NO. MR — HANYA ANGKA ▼▼▼ -->
         <label for="schedMR">No. MR (Rekam Medis)</label>
-        <input type="text" id="schedMR" placeholder="Contoh: 00-12-34-56"
-               autocomplete="off" inputmode="numeric">
+        <input type="text" id="schedMR" placeholder="Contoh: 00123456"
+               autocomplete="off" inputmode="numeric"
+               pattern="[0-9]*" maxlength="20">
         <!-- ▲▲▲ /NO. MR ▲▲▲ -->
 
         <!-- ▼▼▼ Tingkat Prioritas (sinkron dengan patient.html) ▼▼▼ -->
@@ -103,12 +104,11 @@
   <script>
   /* =====================================================================
    *  Jadwal Berobat — Logic (tanpa CSS / self-contained)
-   *  v4 — SINKRON dengan patient.html:
-   *       - Menyimpan field `priority` (merah|kuning|biru)
-   *       - Menyimpan field `mr` (No. Rekam Medis)  ← BARU
+   *  v5 — SINKRON dengan patient.html:
+   *       - Field `priority` (merah|kuning|biru)
+   *       - Field `mr` (No. Rekam Medis) → HANYA ANGKA (auto-sanitize)
    *       - patient.html membaca item.priority via tierOf()
    *       - guessPriority() hanya dipakai sebagai fallback data lama
-   *       - Icon sudah dihilangkan (label teks saja)
    * ===================================================================== */
   (function () {
     'use strict';
@@ -117,6 +117,49 @@
     window.__JADWAL_BEROBAT_INIT__ = true;
 
     var $ = function (id) { return document.getElementById(id); };
+
+    /* -------------------------------------------------------------------
+     * 0. UTIL — sanitasi No. MR (hanya angka)
+     * ------------------------------------------------------------------- */
+    function sanitizeMR(v) {
+      return String(v == null ? '' : v).replace(/[^0-9]/g, '');
+    }
+    function bindMRInput(el) {
+      if (!el) return;
+
+      /* Bersihkan tiap kali user mengetik */
+      el.addEventListener('input', function () {
+        var cleaned = sanitizeMR(el.value);
+        if (el.value !== cleaned) el.value = cleaned;
+      });
+
+      /* Bersihkan saat paste */
+      el.addEventListener('paste', function (e) {
+        var cd = (e.clipboardData || window.clipboardData);
+        if (!cd) return;
+        var pasted = cd.getData('text') || '';
+        if (/[^0-9]/.test(pasted)) {
+          e.preventDefault();
+          var cleaned = sanitizeMR(pasted);
+          var start = el.selectionStart || 0;
+          var end   = el.selectionEnd   || 0;
+          var val   = el.value || '';
+          var next  = val.slice(0, start) + cleaned + val.slice(end);
+          el.value = sanitizeMR(next);
+          var pos = start + cleaned.length;
+          try { el.setSelectionRange(pos, pos); } catch (err) {}
+          el.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+      });
+
+      /* Blokir tombol non-angka dari keyboard fisik */
+      el.addEventListener('keypress', function (e) {
+        if (e.key && e.key.length === 1 && !/[0-9]/.test(e.key)
+            && !e.ctrlKey && !e.metaKey) {
+          e.preventDefault();
+        }
+      });
+    }
 
     /* -------------------------------------------------------------------
      * PRIORITY META — disamakan dengan TIERS di patient.html
@@ -136,12 +179,11 @@
       'vvip':       { cls: 'vvip',       label: 'VVIP',            key: 'biru'   },
       'hijau':      { cls: 'vvip',       label: 'VVIP',            key: 'biru'   }
     };
-    var DEFAULT_PRIORITY = 'biru';   /* VVIP — sama dengan default patient.html */
+    var DEFAULT_PRIORITY = 'biru';
 
     function getPriorityMeta(p) {
       return PRIORITY_META[p] || PRIORITY_META[DEFAULT_PRIORITY];
     }
-    /* Fallback: hanya dipakai untuk data lama yang belum punya field .priority */
     function guessPriority(name) {
       if (!name) return DEFAULT_PRIORITY;
       var n = String(name).toLowerCase();
@@ -149,7 +191,6 @@
       if (n.indexOf('vvip suite') >= 0 || n.indexOf('suite') >= 0) return 'kuning';
       return DEFAULT_PRIORITY;
     }
-    /* Ambil prioritas efektif dari item: pakai .priority bila ada, kalau tidak tebak dari nama */
     function resolvePriority(item) {
       if (!item) return DEFAULT_PRIORITY;
       if (item.priority && PRIORITY_META[item.priority]) return item.priority;
@@ -162,6 +203,10 @@
     var scheduleSubtitleEl = $('scheduleSubtitle');
     var modal              = $('scheduleModal');
     if (!scheduleListEl || !modal) return;
+
+    /* Pasang filter angka ke input No. MR */
+    var mrInputEl = $('schedMR');
+    bindMRInput(mrInputEl);
 
     /* Body lock */
     var lockCount = 0, savedOverflow = '';
@@ -209,6 +254,7 @@
     function buildScheduleCard(item, idx) {
       var badge = getBadge(item.date);
       var prio  = getPriorityMeta(resolvePriority(item));
+      var mrVal = sanitizeMR(item.mr);   /* ← pastikan angka murni untuk tampilan */
 
       var li = document.createElement('li');
       li.className = 'schedule-card priority-' + prio.cls;
@@ -226,8 +272,8 @@
       var title = document.createElement('div'); title.className = 'sc-name';
       title.textContent = item.name || 'Pasien';
       var sub = document.createElement('div'); sub.className = 'sc-sub';
-      /* ✅ Tampilkan No. MR + label prioritas */
-      var mrText = item.mr ? ('No. MR: ' + item.mr + ' • ') : '';
+      /* ✅ Tampilkan No. MR (angka saja) + label prioritas */
+      var mrText = mrVal ? ('No. MR: ' + mrVal + ' • ') : '';
       sub.textContent = mrText + prio.label;
       titleWrap.appendChild(title); titleWrap.appendChild(sub);
 
@@ -259,8 +305,8 @@
         row.appendChild(ic); row.appendChild(tx);
         return row;
       }
-      /* ✅ Baris No. MR di body kartu */
-      body.appendChild(makeInfo('id',    'No. MR',  item.mr    || '-'));
+      /* ✅ Baris No. MR di body kartu (angka saja) */
+      body.appendChild(makeInfo('id',    'No. MR',  mrVal || '-'));
       body.appendChild(makeInfo('date',  'Tanggal', formatTanggal(item.date)));
       body.appendChild(makeInfo('time',  'Jam',     item.time  || '-'));
       body.appendChild(makeInfo('place', 'Tempat',  item.place || '-'));
@@ -303,9 +349,9 @@
           var diff = Math.round((t1 - t0) / 86400000);
           if (diff >= 0 && diff <= 7) upcomingCount++;
         }
-        if (data.length === 0)              scheduleSubtitleEl.textContent = 'Tidak ada jadwal dalam waktu dekat.';
-        else if (upcomingCount > 0)         scheduleSubtitleEl.textContent = upcomingCount + ' jadwal dalam 7 hari ke depan.';
-        else                                scheduleSubtitleEl.textContent = data.length + ' jadwal tersimpan.';
+        if (data.length === 0)      scheduleSubtitleEl.textContent = 'Tidak ada jadwal dalam waktu dekat.';
+        else if (upcomingCount > 0) scheduleSubtitleEl.textContent = upcomingCount + ' jadwal dalam 7 hari ke depan.';
+        else                        scheduleSubtitleEl.textContent = data.length + ' jadwal tersimpan.';
       }
 
       if (!data.length) {
@@ -349,8 +395,7 @@
       $('schedTime').value  = '09:00';
       $('schedName').value  = '';
       /* Reset No. MR */
-      var mrEl = $('schedMR');
-      if (mrEl) mrEl.value = '';
+      if (mrInputEl) mrInputEl.value = '';
       $('schedPlace').value = '';
       $('schedNote').value  = '';
       /* Reset prioritas ke default (VVIP / biru) */
@@ -368,8 +413,11 @@
     var saveBtn = $('saveSchedule');
     if (saveBtn) saveBtn.addEventListener('click', function () {
       var name  = $('schedName').value.trim();
-      var mrEl  = $('schedMR');
-      var mr    = mrEl ? mrEl.value.trim() : '';
+      /* ✅ Sanitasi No. MR → hanya angka */
+      var mr    = sanitizeMR(mrInputEl ? mrInputEl.value : '');
+      /* Sinkronkan kembali ke input (jika user paste karakter aneh) */
+      if (mrInputEl && mrInputEl.value !== mr) mrInputEl.value = mr;
+
       var date  = $('schedDate').value;
       var time  = $('schedTime').value;
       var place = $('schedPlace').value.trim();
@@ -379,7 +427,7 @@
       if (!PRIORITY_META[priority]) priority = DEFAULT_PRIORITY;
 
       if (!name)  { alert('Nama pasien wajib diisi.');     $('schedName').focus();  return; }
-      if (!mr)    { alert('No. MR wajib diisi.');          if (mrEl) mrEl.focus();  return; }
+      if (!mr)    { alert('No. MR wajib diisi (hanya angka).'); if (mrInputEl) mrInputEl.focus(); return; }
       if (!date)  { alert('Tanggal berobat wajib diisi.'); $('schedDate').focus();  return; }
       if (!place) { alert('Tempat / poli wajib diisi.');   $('schedPlace').focus(); return; }
 
@@ -387,7 +435,7 @@
       data.push({
         id: Date.now(),
         name: name,
-        mr: mr,                 /* ← BARU: No. Rekam Medis */
+        mr: mr,                 /* ← No. Rekam Medis (angka murni) */
         priority: priority,     /* ← sinkron dengan patient.html (tierOf) */
         date: date,
         time: time,
@@ -409,7 +457,8 @@
       /* util untuk modul lain (mis. patient.html) */
       priorityMeta: getPriorityMeta,
       resolvePriority: resolvePriority,
-      DEFAULT_PRIORITY: DEFAULT_PRIORITY
+      DEFAULT_PRIORITY: DEFAULT_PRIORITY,
+      sanitizeMR: sanitizeMR
     };
   })();
   </script>

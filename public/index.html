@@ -7,6 +7,10 @@
   • Peta dibuat SEKALI di sini → window.map
   • Semua logika marker/list/animation ada di inline script di bawah
   • dashboard.js TIDAK dipakai (menghindari konflik ganda)
+  • FITUR HAPUS RIWAYAT:
+      - #clearHistoryBtn  → hapus SEMUA riwayat pasien prioritas
+      - .del (per item)   → hapus 1 pasien dari daftar + localStorage
+                            (tombol pill "Hapus", bukan ikon ✕ lagi)
   ===================================================================
 -->
 <html lang="id">
@@ -119,6 +123,123 @@
     @media (max-width: 340px) {
       header.bar .bar-brand-text .bar-subtitle { display: none; }
     }
+
+    /* ============================================================
+       TOMBOL HAPUS RIWAYAT (GLOBAL)
+       ============================================================ */
+
+    /* Baris judul panel samping — dibuat flex agar tombol bisa ke kanan */
+    .sheet-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: nowrap;
+    }
+
+    /* Tombol global: hapus SEMUA riwayat */
+    .sheet-title #clearHistoryBtn.clear-history-btn {
+      margin-left: auto;
+      flex: 0 0 auto;
+      width: 32px;
+      height: 32px;
+      border: none;
+      border-radius: 50%;
+      background: rgba(225, 29, 72, 0.12);
+      color: #E11D48;
+      font-size: 15px;
+      line-height: 1;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: background .18s ease, transform .12s ease, opacity .18s ease;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+    .sheet-title #clearHistoryBtn.clear-history-btn:hover:not(:disabled) {
+      background: rgba(225, 29, 72, 0.22);
+    }
+    .sheet-title #clearHistoryBtn.clear-history-btn:active:not(:disabled) {
+      transform: scale(0.92);
+    }
+    .sheet-title #clearHistoryBtn.clear-history-btn:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+    }
+
+    /* ============================================================
+       ITEM LIST — layout rapi: nama (kiri) · tag+Hapus (kanan)
+       ============================================================ */
+    #list .item { position: relative; }
+
+    /* Baris atas tiap item: pastikan benar-benar flex sejajar */
+    #list .item .item-top {
+      display: flex !important;
+      align-items: center !important;
+      justify-content: space-between !important;
+      gap: 8px !important;
+      width: 100% !important;
+      min-width: 0;
+    }
+
+    /* Blok nama + meta: boleh menyusut, tidak boleh melampaui */
+    #list .item .item-top > div:first-child {
+      min-width: 0;
+      flex: 1 1 auto;
+      overflow: hidden;
+    }
+    #list .item .item-top > div:first-child strong,
+    #list .item .item-top > div:first-child .item-meta {
+      display: block;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Grup kanan: tag prioritas + tombol hapus */
+    #list .item .item-actions {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      flex: 0 0 auto;
+      margin-left: auto;
+    }
+
+    /* Tombol hapus per item — pill button bertuliskan "Hapus" */
+    #list .item .item-actions .del {
+      flex: 0 0 auto;
+      height: 24px;
+      padding: 0 10px;
+      border: none;
+      border-radius: 999px;
+      background: #E11D48;
+      color: #ffffff;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.3px;
+      line-height: 1;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      transition: background .18s ease, transform .12s ease, box-shadow .18s ease;
+      -webkit-tap-highlight-color: transparent;
+      box-shadow: 0 1px 3px rgba(225, 29, 72, 0.35);
+      white-space: nowrap;
+    }
+    #list .item .item-actions .del::before {
+      content: "🗑";
+      font-size: 11px;
+      line-height: 1;
+    }
+    #list .item .item-actions .del:hover {
+      background: #BE123C;
+    }
+    #list .item .item-actions .del:active {
+      transform: scale(0.94);
+      box-shadow: 0 1px 2px rgba(225, 29, 72, 0.35);
+    }
   </style>
 </head>
 <body>
@@ -173,6 +294,14 @@
       <div class="sheet-title">
         <b>Pasien Prioritas</b>
         <span id="liveTag">● LIVE</span>
+        <!-- TOMBOL HAPUS SEMUA RIWAYAT -->
+        <button
+          id="clearHistoryBtn"
+          class="clear-history-btn"
+          type="button"
+          title="Hapus semua riwayat pasien"
+          aria-label="Hapus semua riwayat pasien prioritas"
+          disabled>🗑️</button>
       </div>
       <p id="summary" class="summary">Belum ada pasien yang membagikan lokasi.</p>
       <ul id="list" class="list"></ul>
@@ -207,15 +336,12 @@
       var center = cfg.MAP_CENTER || { lat: -6.125022, lng: 106.917765 };
       var zoom   = cfg.MAP_ZOOM   || 13;
 
-      // Tile URL dari config.php (Geoapify).
-      // Fallback ke OSM kalau CONFIG kosong / TILE_URL kosong.
       var tileUrl = cfg.TILE_URL
         || 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
 
       var tileAttr = cfg.TILE_ATTRIBUTION
         || '&copy; OpenStreetMap contributors &copy; Geoapify';
 
-      // Buat peta, simpan ke window.map (GLOBAL)
       window.map = L.map('map', { zoomControl: false })
                     .setView([center.lat, center.lng], zoom);
 
@@ -226,7 +352,6 @@
         attribution: tileAttr
       }).addTo(window.map);
 
-      // Marker rumah sakit (tujuan)
       var hosp = cfg.HOSPITAL;
       if (hosp && hosp.lat != null && hosp.lng != null) {
         L.marker([hosp.lat, hosp.lng], {
@@ -470,6 +595,7 @@
               t.innerHTML = 'Lokasi ' + name.replace(/</g, '&lt;') + '<small>Membagikan lokasi langsung</small>';
             }
           }
+          if (typeof updateClearHistoryBtn === 'function') updateClearHistoryBtn();
           syncSheet();
         }).observe(listEl, { childList: true, subtree: true });
       }
@@ -578,7 +704,7 @@
       if (myLocBtn) myLocBtn.addEventListener('click', requestMyLocation);
 
       /* =========================================================
-         10. KLIK PASIEN → FOKUS
+         10. KLIK PASIEN → FOKUS  (+ HAPUS PER ITEM)
          ========================================================= */
       function findPatientMarker(item, patientId, lat, lng) {
         if (window.patientMarkers && patientId != null &&
@@ -666,16 +792,38 @@
       }
 
       listEl.addEventListener('click', function (e) {
+        /* --- HAPUS PER ITEM --- */
+        var delBtn = e.target.closest
+          ? e.target.closest('.del, .remove-btn, [data-action="delete"]')
+          : null;
+        if (delBtn) {
+          e.preventDefault();
+          e.stopPropagation();
+          var li = delBtn.closest ? delBtn.closest('.item') : null;
+          if (li) {
+            var pid = getItemId(li);
+            var pname = getItemName(li);
+            var konfirmasi = true;
+            if (typeof window.confirm === 'function') {
+              konfirmasi = window.confirm(
+                'Hapus "' + pname + '" dari riwayat Pasien Prioritas?'
+              );
+            }
+            if (konfirmasi && pid) {
+              persistRemoval(pid);   // hapus dari localStorage dulu
+              removePatient({ id: pid });
+            }
+          }
+          return;
+        }
+
+        /* --- KLIK ITEM → FOKUS --- */
         var node = e.target;
         while (node && node !== listEl) {
           if (node.classList && node.classList.contains('item')) break;
           node = node.parentNode;
         }
         if (!node || node === listEl) return;
-        if (e.target.closest &&
-            e.target.closest('.del, .remove-btn, [data-action="delete"]')) {
-          return;
-        }
         focusPatient(node);
       });
 
@@ -777,6 +925,23 @@
         upsertPatientListItem(patientData[id]);
       }
 
+      /**
+       * Bangun satu baris item pasien:
+       *
+       *   <li class="item">
+       *     <button class="item-btn">
+       *       <div class="item-top">
+       *         <div>  <strong>Nama</strong><div class="item-meta">Lat, Lng</div> </div>
+       *         <div class="item-actions">
+       *             <span class="tag">VVIP</span>
+       *             <button class="del">Hapus</button>
+       *         </div>
+       *       </div>
+       *     </button>
+       *   </li>
+       *
+       * Tombol "Hapus" sejajar rapi dengan tag prioritas (bukan absolute).
+       */
       function upsertPatientListItem(data) {
         var id = data.id;
         var item = listEl.querySelector('[data-id="' + id + '"]');
@@ -801,6 +966,7 @@
           var top = document.createElement('div');
           top.className = 'item-top';
 
+          /* --- Kiri: nama + meta --- */
           var nameWrap = document.createElement('div');
           var nameEl = document.createElement('strong');
           nameEl.textContent = data.name;
@@ -812,12 +978,25 @@
                                  ', Lng ' + Number(data.lng).toFixed(5);
           nameWrap.appendChild(nameMeta);
 
+          /* --- Kanan: tag + tombol hapus dalam satu grup --- */
+          var actions = document.createElement('div');
+          actions.className = 'item-actions';
+
           var tag = document.createElement('span');
           tag.className = 'tag ' + meta.cls;
           tag.textContent = label;
+          actions.appendChild(tag);
+
+          var del = document.createElement('button');
+          del.type = 'button';
+          del.className = 'del';
+          del.setAttribute('aria-label', 'Hapus ' + data.name + ' dari riwayat');
+          del.title = 'Hapus dari riwayat';
+          del.textContent = 'Hapus';   /* <-- tulisan, bukan simbol ✕ */
+          actions.appendChild(del);
 
           top.appendChild(nameWrap);
-          top.appendChild(tag);
+          top.appendChild(actions);
           btn.appendChild(top);
 
           item.appendChild(btn);
@@ -862,6 +1041,7 @@
         if (marker && window.map && typeof window.map.removeLayer === 'function') {
           try {
             if (marker.__animFrame) cancelAnimationFrame(marker.__animFrame);
+            if (marker.__animDone) marker.__animDone = null;
             window.map.removeLayer(marker);
           } catch (e) {}
         }
@@ -879,6 +1059,29 @@
             : 'Belum ada pasien yang membagikan lokasi.';
         }
         updateLiveTag();
+      }
+
+      /**
+       * Hapus 1 id dari localStorage agar tidak muncul kembali
+       * saat polling loadFromLocalStorage() berikutnya.
+       */
+      function persistRemoval(id) {
+        try {
+          var raw = localStorage.getItem(LS_LIVE_KEY);
+          if (!raw) return;
+          var arr = JSON.parse(raw);
+          if (!Array.isArray(arr)) return;
+          var filtered = arr.filter(function (p) {
+            if (!p) return false;
+            var pid = p.id != null ? p.id : (p.name || '').toLowerCase().replace(/\s+/g, '-');
+            return String(pid) !== String(id);
+          });
+          var json = JSON.stringify(filtered);
+          localStorage.setItem(LS_LIVE_KEY, json);
+          lastSnapshot = json;
+        } catch (e) {
+          console.warn('persistRemoval error:', e);
+        }
       }
 
       function updatePatientInfo(data) {
@@ -904,6 +1107,9 @@
         if (!tag) return;
         var total = listEl.querySelectorAll('.item').length;
         tag.textContent = total ? '● LIVE · ' + total : '● LIVE';
+        if (typeof updateClearHistoryBtn === 'function') {
+          updateClearHistoryBtn();
+        }
       }
 
       /* =========================================================
@@ -924,15 +1130,12 @@
             function (state) {
               var connEl = $('connStatus');
               if (connEl) {
-                // Sembunyikan total jika state adalah 'demo' (tidak dipakai)
                 if (state === 'demo') {
                   connEl.style.display = 'none';
                   connEl.textContent = '';
                   connEl.className = 'conn';
                   return;
                 }
-
-                // Tampilkan kembali untuk state selain 'demo'
                 connEl.style.display = '';
                 var map = { online: 'Terhubung', offline: 'Terputus', unsupported: 'Tidak didukung' };
                 connEl.textContent = map[state] || state || '';
@@ -1022,6 +1225,90 @@
       });
 
       /* =========================================================
+         13b. TOMBOL HAPUS RIWAYAT (GLOBAL)
+         ========================================================= */
+      function updateClearHistoryBtn() {
+        var btn = $('clearHistoryBtn');
+        if (!btn) return;
+        var total = listEl.querySelectorAll('.item').length;
+        btn.disabled = (total === 0);
+        btn.setAttribute('aria-disabled', total === 0 ? 'true' : 'false');
+        btn.title = total
+          ? 'Hapus ' + total + ' riwayat pasien prioritas'
+          : 'Tidak ada riwayat untuk dihapus';
+      }
+
+      /**
+       * Hapus SEMUA riwayat pasien.
+       */
+      function clearAllHistory() {
+        var total = listEl.querySelectorAll('.item').length;
+        if (!total) { updateClearHistoryBtn(); return; }
+
+        if (typeof window.confirm === 'function') {
+          var ok = window.confirm(
+            'Hapus semua riwayat Pasien Prioritas?\n\n' +
+            total + ' data pasien akan dihapus dari daftar dan ' +
+            'penyimpanan lokal. Tindakan ini tidak dapat dibatalkan.'
+          );
+          if (!ok) return;
+        }
+
+        // 1) Hapus marker + data in-memory
+        Object.keys(window.patientMarkers || {}).forEach(function (id) {
+          var marker = window.patientMarkers[id];
+          if (marker && window.map && typeof window.map.removeLayer === 'function') {
+            try {
+              if (marker.__animFrame) cancelAnimationFrame(marker.__animFrame);
+              if (marker.__animDone) marker.__animDone = null;
+              window.map.removeLayer(marker);
+            } catch (e) {}
+          }
+          delete window.patientMarkers[id];
+          delete patientData[id];
+        });
+
+        // 2) Kosongkan DOM list
+        while (listEl.firstChild) listEl.removeChild(listEl.firstChild);
+
+        // 3) Hapus penyimpanan lokal
+        try { localStorage.removeItem(LS_LIVE_KEY); } catch (e) {}
+        lastSnapshot = '';
+
+        // 4) Reset teks
+        var summaryEl = $('summary');
+        if (summaryEl) summaryEl.textContent = 'Belum ada pasien yang membagikan lokasi.';
+
+        var t = $('locText1');
+        if (t) t.innerHTML = 'Lokasi Pasien<small>Menunggu data…</small>';
+
+        var icon = $('locIcon1');
+        if (icon) icon.className = 'loc-icon green';
+
+        // 5) Update UI + layout
+        updateLiveTag();
+        updateClearHistoryBtn();
+        syncSheet();
+        fixMap(80);
+
+        try {
+          console.info('[riwayat] Semua riwayat pasien prioritas dihapus.');
+        } catch (e) {}
+      }
+
+      var clearHistoryBtn = $('clearHistoryBtn');
+      if (clearHistoryBtn) {
+        clearHistoryBtn.addEventListener('click', function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          clearAllHistory();
+        });
+      }
+
+      // Sinkronkan state awal
+      updateLiveTag();
+
+      /* =========================================================
          14. API PUBLIK
          ========================================================= */
       window.__dashboard = {
@@ -1037,7 +1324,10 @@
         unlockBody: unlockBody,
         syncSheet: syncSheet,
         fixMap: fixMap,
-        animateMarkerTo: animateMarkerTo
+        animateMarkerTo: animateMarkerTo,
+        /* --- utilitas hapus riwayat --- */
+        clearAllHistory: clearAllHistory,
+        persistRemoval: persistRemoval
       };
     })();
   </script>
