@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#1B5FAA">
+  <title>Login Admin - RS Pelabuhan Jakarta</title>
+  <style>
+    :root { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; color: #17324d; background: #f2f6fb; }
+    * { box-sizing: border-box; }
+    body { min-height: 100vh; margin: 0; display: grid; place-items: center; padding: 20px; }
+    .card { width: min(100%, 420px); padding: 32px; background: #fff; border-radius: 18px; box-shadow: 0 12px 35px rgba(27, 75, 120, .14); }
+    .logo { display: block; width: 82px; height: 82px; object-fit: contain; margin: 0 auto 18px; }
+    h1 { margin: 0; text-align: center; font-size: 24px; color: #144a87; }
+    .subtitle { margin: 8px 0 26px; text-align: center; color: #637487; font-size: 14px; }
+    label { display: block; margin: 14px 0 7px; font-weight: 700; font-size: 14px; }
+    input { width: 100%; min-height: 46px; padding: 10px 12px; border: 1px solid #cbd7e4; border-radius: 10px; font: inherit; }
+    input:focus { outline: 3px solid rgba(27, 95, 170, .18); border-color: #1b5faa; }
+    button { width: 100%; min-height: 48px; margin-top: 22px; border: 0; border-radius: 10px; background: #1b5faa; color: #fff; font: inherit; font-weight: 700; cursor: pointer; }
+    button:disabled { opacity: .65; cursor: wait; }
+    .error { min-height: 20px; margin: 14px 0 0; color: #b42318; font-size: 14px; text-align: center; }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <img class="logo" src="../assets/img/logo%20IHC%20RSPJ.png" alt="Logo RS Pelabuhan Jakarta"
+         onerror="this.style.display='none'">
+    <h1>Login Admin</h1>
+    <p class="subtitle">Monitoring lokasi pasien<br>RS Pelabuhan Jakarta</p>
+    <form id="loginForm" novalidate>
+      <label for="user">User ID</label>
+      <input id="user" name="user" type="text" autocomplete="username" maxlength="8" required>
+      <label for="pass">Password</label>
+      <input id="pass" name="pass" type="password" autocomplete="current-password" maxlength="8" required>
+      <button id="submitButton" type="submit">Masuk</button>
+      <p id="error" class="error" role="alert" aria-live="polite"></p>
+    </form>
+  </main>
+  <script>
+    (async function () {
+      const params = new URLSearchParams(location.search);
+      const next = params.get('next') === 'index.html' ? 'index.html' : 'index.html';
+      try {
+        const response = await fetch('../api/admin_auth.php?action=status', {
+          credentials: 'same-origin',
+          cache: 'no-store'
+        });
+        const data = await response.json();
+        if (data.ok) location.replace(next);
+      } catch (_) {}
+    })();
+
+    document.getElementById('loginForm').addEventListener('submit', async function (event) {
+      event.preventDefault();
+      const button = document.getElementById('submitButton');
+      const error = document.getElementById('error');
+      const user = document.getElementById('user').value.trim();
+      const pass = document.getElementById('pass').value;
+      error.textContent = '';
+      if (!user || !pass) {
+        error.textContent = 'User ID dan password wajib diisi.';
+        return;
+      }
+      button.disabled = true;
+      button.textContent = 'Memeriksa...';
+      try {
+        const response = await fetch('../api/admin_auth.php', {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ user, pass })
+        });
+        const data = await response.json();
+        if (!response.ok || !data.ok) throw new Error(data.error || 'Login gagal.');
+        location.replace('index.html');
+      } catch (e) {
+        error.textContent = e.message || 'Tidak dapat terhubung ke server.';
+        button.disabled = false;
+        button.textContent = 'Masuk';
+      }
+    });
+  </script>
+</body>
+</html>

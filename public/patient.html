@@ -264,6 +264,10 @@
              placeholder="Contoh: 3174012345670001">
       <!-- ▲▲▲ /NIK ▲▲▲ -->
 
+      <label class="consent-row" for="consent">
+        <input type="checkbox" id="consent">
+        <span>Saya setuju lokasi dan NIK saya digunakan RS Pelabuhan Jakarta untuk memantau kedatangan saya selama berbagi lokasi aktif.</span>
+      </label>
       <button id="toggle" class="btn wide" type="button">Mulai bagikan lokasi</button>
       <p id="state" class="state" role="status" aria-live="polite">Lokasi belum dibagikan.</p>
     </main>
@@ -350,7 +354,7 @@
 
   <script src="../config.php"></script>
   <script src="../js/transport.js"></script>
-  <script src="../js/patient.js"></script>
+  <!-- <script src="../js/patient.js"></script> -->
 
   <script>
     (function () {
@@ -493,15 +497,16 @@
           };
         } catch (e) { return null; }
       }
+
       function saveIdentity(name, nik) {
-        try {
-          localStorage.setItem(IDENTITY_KEY, JSON.stringify({
-            name: String(name || '').trim(),
-            nik:  sanitizeNIK(nik || ''),
-            savedAt: Date.now()
-          }));
-        } catch (e) {}
-      }
+      try {
+        localStorage.setItem(IDENTITY_KEY, JSON.stringify({
+          name: String(name || '').trim(),
+          nik:  sanitizeNIK(nik || ''),
+          savedAt: Date.now()
+        }));
+      } catch (e) {}
+    }
 
       var nameEl = $('name');
       var nikEl  = $('nik');
@@ -1075,12 +1080,79 @@
       /* ========== 10. TRANSPORT + WATCH GEOLOKASI ========== */
       var transport = null, watchId = null;
       var lastLat = null, lastLng = null, lastSent = 0;
-      var SEND_EVERY_MS = 5000, MIN_MOVE_M = 10;
+      var SEND_EVERY_MS = 15000, MIN_MOVE_M = 25;
       var LS_LIVE_KEY = 'pasien_lokasi_live';
 
       var hasArrived = false;
       var firstPositionRecorded = false;
       var startedOutsideHospital = false;
+
+      var API_BASE = '../api/';
+      var TOKEN_KEY = 'vip_token', TOKEN_NIK_KEY = 'vip_token_nik';
+
+      function getToken() { try { return localStorage.getItem(TOKEN_KEY) || ''; } catch (e) { return ''; } }
+      function clearToken() { try { localStorage.removeItem(TOKEN_KEY); localStorage.removeItem(TOKEN_NIK_KEY); } catch (e) {} }
+
+      function apiPost(url, body, keepalive) {
+        return fetch(API_BASE + url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+          keepalive: !!keepalive
+        }).then(function (r) {
+          return r.json().catch(function () { return {}; })
+            .then(function (data) { return { status: r.status, data: data }; });
+        });
+      }
+
+      // Daftar sekali ke server (cek pasien prioritas). Resolve true jika siap berbagi.
+      function ensureRegistered() {
+        var nik = getNIK();
+        if (getToken() && localStorage.getItem(TOKEN_NIK_KEY) === nik) return Promise.resolve(true);
+
+        var consent = $('consent');
+        if (!consent || !consent.checked) {
+          if (st) st.textContent = '⚠ Centang persetujuan terlebih dahulu.';
+          return Promise.resolve(false);
+        }
+        if (st) st.textContent = 'Memeriksa data Anda…';
+        return apiPost('register.php', { nama: getName(), nik: nik, setuju: true })
+          .then(function (res) {
+            if (!res.data.ok) {
+              if (st) st.textContent = '⚠ ' + (res.data.error || 'Pendaftaran gagal.');
+              return false;
+            }
+            try {
+              localStorage.setItem(TOKEN_KEY, res.data.token);
+              localStorage.setItem(TOKEN_NIK_KEY, nik);
+            } catch (e) {}
+            if (res.data.nama && nameEl) nameEl.value = res.data.nama;  // nama resmi dari SIMOP
+            saveIdentity(getName(), nik);
+            updateSavedBadges();
+            return true;
+          })
+          .catch(function () {
+            if (st) st.textContent = '⚠ Tidak dapat terhubung ke server.';
+            return false;
+          });
+      }
+
+      function sendToServer(tipe, lat, lng, acc, keepalive) {
+        var token = getToken();
+        if (!token) return;
+        apiPost('share_location.php', { token: token, tipe: tipe, lat: lat, lng: lng, akurasi: acc }, keepalive)
+          .then(function (res) {
+            if (res.status === 401) {
+              clearToken();
+              stopSharing('token-invalid');
+              if (st) st.textContent = '⚠ Sesi tidak valid. Silakan klik "Mulai bagikan lokasi" lagi.';
+            }
+          })
+          .catch(function () {});
+      }
+
+      // Jika sudah pernah daftar, persetujuan tidak perlu dicentang lagi
+      ready(function () { if (getToken() && $('consent')) $('consent').checked = true; });
 
       function distanceMeters(lat1, lng1, lat2, lng2) {
         var R = 6371000, toRad = function (d) { return d * Math.PI / 180; };
@@ -1136,12 +1208,13 @@
         };
         if (transport) { try { transport.send(payload); } catch (e) {} }
         saveToLocalStorage(payload);
+        sendToServer('LOC', lat, lng, acc);
       }
 
       function handleArrival(distM, pos) {
         if (hasArrived) return;
         hasArrived = true;
-
+        sendToServer('ARRIVED', pos ? Number(pos.coords.latitude) : lastLat, pos ? Number(pos.coords.longitude) : lastLng, pos && isFinite(Number(pos.coords.accuracy)) ? Number(pos.coords.accuracy) : null, true);
         if (transport) {
           try {
             transport.send({
@@ -1267,6 +1340,7 @@
           } catch (e) {}
         }
         removeFromLocalStorage(pid);
+        if (reason !== 'arrived') sendToServer('STOP', lastLat, lastLng, null, reason === 'unload');  // ← tambahan
         lastLat = null; lastLng = null; lastSent = 0;
         setSharing(false);
         setFormLocked(false); /* ★ buka kunci field agar bisa diedit lagi */
@@ -1317,42 +1391,26 @@
       btn.addEventListener('click', function () {
         if (isSharing) { stopSharing('manual'); return; }
 
-        /* Validasi input — form selalu editable sebelum sharing */
-        if (!getName()) {
-          alert('Isi nama pasien terlebih dahulu.');
-          if (nameEl) nameEl.focus();
-          return;
-        }
-        if (!getNIK()) {
-          alert('Isi NIK pasien (hanya angka) terlebih dahulu.');
-          if (nikEl) nikEl.focus();
-          return;
-        }
-        if (getNIK().length !== 16) {
-          alert('NIK harus terdiri dari 16 digit angka.');
-          if (nikEl) nikEl.focus();
-          return;
-        }
+        if (!getName()) { alert('Isi nama pasien terlebih dahulu.'); if (nameEl) nameEl.focus(); return; }
+        if (!getNIK())  { alert('Isi NIK pasien (hanya angka) terlebih dahulu.'); if (nikEl) nikEl.focus(); return; }
+        if (getNIK().length !== 16) { alert('NIK harus terdiri dari 16 digit angka.'); if (nikEl) nikEl.focus(); return; }
 
-        /* Simpan identitas + kunci form (via startSharing) */
-        saveIdentity(getName(), getNIK());
-        updateSavedBadges();
+        btn.disabled = true;
+        ensureRegistered().then(function (ok) {
+          btn.disabled = false;
+          if (!ok) return;                      // pesan penolakan sudah tampil di #state
 
-        if (transport) {
-          try {
-            transport.send({
-              type: 'patient-info',
-              id: getPatientId(),
-              name: getName(),
-              nik: getNIK(),
-              priority: getPriority(),
-              ts: Date.now()
-            });
-          } catch (e) {}
-        }
-        patchLiveEntry({ name: getName(), nik: getNIK() });
-
-        startSharing();
+          saveIdentity(getName(), getNIK());
+          updateSavedBadges();
+          if (transport) {
+            try {
+              transport.send({ type: 'patient-info', id: getPatientId(), name: getName(),
+                              nik: getNIK(), priority: getPriority(), ts: Date.now() });
+            } catch (e) {}
+          }
+          patchLiveEntry({ name: getName(), nik: getNIK() });
+          startSharing();
+        });
       });
 
     })();

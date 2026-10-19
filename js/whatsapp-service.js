@@ -30,6 +30,7 @@
   'use strict';
 
   if (global.WAService && global.WAService.__init__) return;
+  var DEFAULT_COUNTRY = '62';
 
   /* -------------------------------------------------------------------
    * 0. KONFIG — bisa dioverride dari window.CONFIG
@@ -50,7 +51,7 @@
       adminNumber: adminE164,       // format 62…
       adminDisplay: formatWADisplay(adminE164),
       hospitalName: hospitalName,
-      defaultCountry: '62'
+      defaultCountry: DEFAULT_COUNTRY
     };
   })();
 
@@ -78,11 +79,11 @@
     var s = sanitizeWA(v);
     if (!s) return '';
     if (s.charAt(0) === '0') {
-      s = CFG.defaultCountry + s.slice(1);
+      s = DEFAULT_COUNTRY + s.slice(1);
     } else if (s.charAt(0) === '8') {
-      s = CFG.defaultCountry + s;
-    } else if (s.indexOf(CFG.defaultCountry) !== 0) {
-      s = CFG.defaultCountry + s;
+      s = DEFAULT_COUNTRY + s;
+    } else if (s.indexOf(DEFAULT_COUNTRY) !== 0) {
+      s = DEFAULT_COUNTRY + s;
     }
     return s;
   }

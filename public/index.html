@@ -27,6 +27,29 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <title>Monitoring Pasien Prioritas - RS Pelabuhan Jakarta</title>
+  <style>
+    body { visibility: hidden; }
+    body.auth-ready { visibility: visible; }
+  </style>
+  <script>
+    (async function () {
+      try {
+        const response = await fetch('../api/admin_auth.php?action=status', {
+          credentials: 'same-origin',
+          cache: 'no-store'
+        });
+        const data = await response.json();
+        if (!response.ok || !data.ok) {
+          location.replace('login.html?next=index.html');
+          return;
+        }
+        document.documentElement.classList.add('admin-authenticated');
+        document.body.classList.add('auth-ready');
+      } catch (_) {
+        location.replace('login.html?next=index.html');
+      }
+    })();
+  </script>
 
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
   <link rel="stylesheet" href="../css/style.css">
@@ -105,6 +128,23 @@
       flex: 0 0 auto;
       display: flex;
       align-items: center;
+      gap: 8px;
+    }
+    #logoutBtn {
+      border: 1px solid rgba(255, 255, 255, .65);
+      border-radius: 8px;
+      padding: 7px 11px;
+      background: rgba(255, 255, 255, .12);
+      color: #fff;
+      font: inherit;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    #logoutBtn:hover { background: rgba(255, 255, 255, .22); }
+    #logoutBtn:disabled { opacity: .65; cursor: wait; }
+    @media (max-width: 420px) {
+      #logoutBtn { padding: 7px 8px; font-size: 12px; }
     }
     @media (max-width: 420px) {
       header.bar { padding: 6px 10px; min-height: 56px; gap: 8px; }
@@ -488,6 +528,7 @@
 
     <div class="bar-right">
       <a class="btn ghost" href="patient.html" target="_blank" rel="noopener">Pasien</a>
+      <button id="logoutBtn" type="button">Logout</button>
     </div>
   </header>
 
@@ -632,6 +673,38 @@
 
       console.info('[map] Provider:',
         tileUrl.indexOf('geoapify') !== -1 ? 'Geoapify' : 'OpenStreetMap');
+    })();
+  </script>
+  <script>
+    (function () {
+      function bindLogout() {
+        var logoutBtn = document.getElementById('logoutBtn');
+        if (!logoutBtn) return;
+        logoutBtn.addEventListener('click', async function () {
+          if (!window.confirm('Keluar dari akun admin?')) return;
+          logoutBtn.disabled = true;
+          logoutBtn.textContent = 'Keluar...';
+          try {
+            var response = await fetch('../api/admin_auth.php?action=logout', {
+              method: 'POST',
+              credentials: 'same-origin',
+              cache: 'no-store'
+            });
+            var data = await response.json();
+            if (!response.ok || !data.ok) throw new Error('Logout gagal.');
+            window.location.replace('login.html');
+          } catch (error) {
+            logoutBtn.disabled = false;
+            logoutBtn.textContent = 'Logout';
+            window.alert(error.message || 'Logout gagal. Silakan coba lagi.');
+          }
+        });
+      }
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', bindLogout, { once: true });
+      } else {
+        bindLogout();
+      }
     })();
   </script>
 
