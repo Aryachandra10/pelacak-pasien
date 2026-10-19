@@ -569,7 +569,8 @@
       'use strict';
 
       var cfg    = window.CONFIG || {};
-      var center = cfg.MAP_CENTER || { lat: -6.125022, lng: 106.917765 };
+      /* ▼ FIX: koordinat fallback disesuaikan dengan lokasi RS Pelabuhan Jakarta */
+      var center = cfg.MAP_CENTER || { lat: -6.12504, lng: 106.91778 };
       var zoom   = cfg.MAP_ZOOM   || 13;
 
       var tileUrl = cfg.TILE_URL
@@ -898,9 +899,12 @@
             name: h.name || 'RS Pelabuhan Jakarta'
           };
         } else {
+          /* ▼ FIX: koordinat fallback RS Pelabuhan Jakarta
+             Latitude  : -6.12504  (6° 07′ 30″ LS)
+             Longitude : 106.91778 (106° 55′ 06″ BT) */
           HOSPITAL_COORD = {
-            lat: -6.125022,
-            lng: 106.917765,
+            lat: -6.12504,
+            lng: 106.91778,
             name: 'RS Pelabuhan Jakarta'
           };
         }
