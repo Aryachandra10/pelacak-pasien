@@ -78,7 +78,6 @@ $config = [
     //   '' = mode demo (antar-tab di satu browser, tanpa server)
     //   isi = mode live, mis. "ws://localhost:8080" atau "wss://domain-anda.com/ws"
     'WS_URL' => '',
-
     'STALE_MS'  => 30000, // lokasi dianggap tidak live jika tak ada update selama ini
     'SPEED_KMH' => 30,    // asumsi kecepatan untuk estimasi tiba (garis lurus)
 ];
