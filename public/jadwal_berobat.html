@@ -57,40 +57,68 @@
       <h3 id="modalTitle">Tambah Jadwal Berobat</h3>
 
       <div class="modal-body">
-        <label for="schedName">Nama Pasien</label>
-        <input type="text" id="schedName" placeholder="Contoh: Budi Santoso"
-               autocomplete="name">
 
-        <!-- ▼▼▼ NIK — HANYA ANGKA, MAX 16 DIGIT ▼▼▼ -->
-        <label for="schedNIK">NIK (Nomor Induk Kependudukan)</label>
-        <input type="text" id="schedNIK"
-               placeholder="16 digit, contoh: 3171234567890001"
-               autocomplete="off" inputmode="numeric"
-               pattern="[0-9]*" maxlength="16">
-        <!-- ▲▲▲ /NIK ▲▲▲ -->
+        <!-- ===== ROW: Nama Pasien ===== -->
+        <div class="form-row" data-field="name">
+          <label for="schedName">Nama Pasien</label>
+          <input type="text" id="schedName" placeholder="Contoh: Budi Santoso"
+                 autocomplete="name">
+        </div>
 
-        <!-- ▼▼▼ Tingkat Prioritas (sinkron dengan patient.html) ▼▼▼ -->
-        <label for="schedPriority">Tingkat Prioritas</label>
-        <select id="schedPriority" autocomplete="off">
-          <option value="merah">President Suite</option>
-          <option value="kuning">VVIP Suite</option>
-          <option value="biru" selected>VVIP</option>
-        </select>
-        <!-- ▲▲▲ /Tingkat Prioritas ▲▲▲ -->
+        <!-- ===== ROW: NIK ===== -->
+        <div class="form-row" data-field="nik">
+          <label for="schedNIK">NIK (Nomor Induk Kependudukan)</label>
+          <input type="text" id="schedNIK"
+                 placeholder="16 digit, contoh: 3171234567890001"
+                 autocomplete="off" inputmode="numeric"
+                 pattern="[0-9]*" maxlength="16">
+        </div>
 
-        <label for="schedDate">Tanggal Berobat</label>
-        <input type="date" id="schedDate">
+        <!-- ===== ROW: Nomor WhatsApp (row tersendiri) ===== -->
+        <div class="form-row" data-field="wa">
+          <label for="schedWA">Nomor WhatsApp</label>
+          <input type="tel" id="schedWA"
+                 placeholder="Contoh: 081234567890"
+                 autocomplete="off" inputmode="numeric"
+                 pattern="[0-9]*" maxlength="16">
+        </div>
 
-        <label for="schedTime">Jam</label>
-        <input type="time" id="schedTime">
+        <!-- ===== ROW: Tingkat Prioritas ===== -->
+        <div class="form-row" data-field="priority">
+          <label for="schedPriority">Tingkat Prioritas</label>
+          <select id="schedPriority" autocomplete="off">
+            <option value="merah">President Suite</option>
+            <option value="kuning">VVIP Suite</option>
+            <option value="biru" selected>VVIP</option>
+          </select>
+        </div>
 
-        <label for="schedPlace">Tempat / Poli</label>
-        <input type="text" id="schedPlace"
-               placeholder="Contoh: Poli Umum / RSUD Kota">
+        <!-- ===== ROW: Tanggal Berobat ===== -->
+        <div class="form-row" data-field="date">
+          <label for="schedDate">Tanggal Berobat</label>
+          <input type="date" id="schedDate">
+        </div>
 
-        <label for="schedNote">Catatan (opsional)</label>
-        <textarea id="schedNote"
-                  placeholder="Contoh: Bawa hasil lab, kontrol gula darah"></textarea>
+        <!-- ===== ROW: Jam ===== -->
+        <div class="form-row" data-field="time">
+          <label for="schedTime">Jam</label>
+          <input type="time" id="schedTime">
+        </div>
+
+        <!-- ===== ROW: Tempat / Poli ===== -->
+        <div class="form-row" data-field="place">
+          <label for="schedPlace">Tempat / Poli</label>
+          <input type="text" id="schedPlace"
+                 placeholder="Contoh: Poli Umum / RSUD Kota">
+        </div>
+
+        <!-- ===== ROW: Catatan ===== -->
+        <div class="form-row" data-field="note">
+          <label for="schedNote">Catatan (opsional)</label>
+          <textarea id="schedNote"
+                    placeholder="Contoh: Bawa hasil lab, kontrol gula darah"></textarea>
+        </div>
+
       </div>
 
       <div class="modal-actions">
@@ -105,11 +133,14 @@
   <script>
   /* =====================================================================
    *  Jadwal Berobat — Logic (tanpa CSS / self-contained)
-   *  v6 — SYNC dengan index.html & patient.html:
-   *       - Field `nik` (NIK 16 digit) — identik dengan sanitizeNIK() di index.html
-   *       - Field `priority` (merah|kuning|biru) — di-normalize oleh index.html
-   *       - Migrasi otomatis data lama: `mr` → `nik`
-   *       - Data siap di-cross-reference dengan patientData[id].nik
+   *  v8 — SYNC dengan index.html & patient.html:
+   *       - Setiap field dibungkus .form-row (siap map ke kolom DB)
+   *       - Field `nik` (NIK 16 digit) — identik dengan sanitizeNIK()
+   *       - Field `wa` (Nomor WhatsApp) — ROW tersendiri, angka murni
+   *       - Field `priority` (merah|kuning|biru)
+   *       - Migrasi otomatis: `mr` → `nik`, `phone`/`hp` → `wa`
+   *       - Objek jadwal punya struktur flat yang siap di-INSERT ke DB:
+   *         { id, name, nik, wa, priority, date, time, place, note }
    * ===================================================================== */
   (function () {
     'use strict';
@@ -120,44 +151,43 @@
     var $ = function (id) { return document.getElementById(id); };
 
     /* -------------------------------------------------------------------
-     * 0. UTIL — sanitasi NIK (hanya angka, max 16 digit)
-     *    IDENTIK dengan sanitizeNIK() di index.html
+     * 0. UTIL — sanitasi angka
      * ------------------------------------------------------------------- */
-    function sanitizeNIK(v) {
+    function sanitizeDigits(v, max) {
+      var m = max || 16;
       return String(v == null ? '' : v)
         .replace(/[^0-9]/g, '')
-        .slice(0, 16);
+        .slice(0, m);
     }
+    function sanitizeNIK(v) { return sanitizeDigits(v, 16); }
+    function sanitizeWA(v)  { return sanitizeDigits(v, 16); }
 
-    function bindNIKInput(el) {
+    function bindNumericInput(el, sanitizer) {
       if (!el) return;
 
-      /* Bersihkan tiap kali user mengetik */
       el.addEventListener('input', function () {
-        var cleaned = sanitizeNIK(el.value);
+        var cleaned = sanitizer(el.value);
         if (el.value !== cleaned) el.value = cleaned;
       });
 
-      /* Bersihkan saat paste */
       el.addEventListener('paste', function (e) {
         var cd = (e.clipboardData || window.clipboardData);
         if (!cd) return;
         var pasted = cd.getData('text') || '';
         if (/[^0-9]/.test(pasted)) {
           e.preventDefault();
-          var cleaned = sanitizeNIK(pasted);
+          var cleaned = sanitizer(pasted);
           var start = el.selectionStart || 0;
           var end   = el.selectionEnd   || 0;
           var val   = el.value || '';
           var next  = val.slice(0, start) + cleaned + val.slice(end);
-          el.value = sanitizeNIK(next);
+          el.value = sanitizer(next);
           var pos = Math.min(start + cleaned.length, 16);
           try { el.setSelectionRange(pos, pos); } catch (err) {}
           el.dispatchEvent(new Event('input', { bubbles: true }));
         }
       });
 
-      /* Blokir tombol non-angka dari keyboard fisik */
       el.addEventListener('keypress', function (e) {
         if (e.key && e.key.length === 1 && !/[0-9]/.test(e.key)
             && !e.ctrlKey && !e.metaKey) {
@@ -167,17 +197,12 @@
     }
 
     /* -------------------------------------------------------------------
-     * PRIORITY META — disamakan dengan TIERS di patient.html
-     *   merah  → President Suite
-     *   kuning → VVIP Suite
-     *   biru   → VVIP  ← default
-     * Alias lama (president/vvip-suite/vvip/hijau) tetap didukung.
+     * PRIORITY META
      * ------------------------------------------------------------------- */
     var PRIORITY_META = {
       'merah':      { cls: 'president',  label: 'President Suite', key: 'merah'  },
       'kuning':     { cls: 'vvip-suite', label: 'VVIP Suite',      key: 'kuning' },
       'biru':       { cls: 'vvip',       label: 'VVIP',            key: 'biru'   },
-      /* alias lama */
       'president':  { cls: 'president',  label: 'President Suite', key: 'merah'  },
       'vvip-suite': { cls: 'vvip-suite', label: 'VVIP Suite',      key: 'kuning' },
       'vvip':       { cls: 'vvip',       label: 'VVIP',            key: 'biru'   },
@@ -208,33 +233,44 @@
     var modal              = $('scheduleModal');
     if (!scheduleListEl || !modal) return;
 
-    /* Pasang filter angka ke input NIK */
+    /* Filter angka untuk NIK & WhatsApp */
     var nikInputEl = $('schedNIK');
-    bindNIKInput(nikInputEl);
+    var waInputEl  = $('schedWA');
+    bindNumericInput(nikInputEl, sanitizeNIK);
+    bindNumericInput(waInputEl,  sanitizeWA);
 
     /* Body lock */
     var lockCount = 0, savedOverflow = '';
     function lockBody()   { lockCount++; if (lockCount === 1) { savedOverflow = document.body.style.overflow || ''; document.body.style.overflow = 'hidden'; } }
     function unlockBody() { lockCount = Math.max(0, lockCount - 1); if (lockCount === 0) document.body.style.overflow = savedOverflow; }
 
-    /* Storage — dengan migrasi mr → nik otomatis */
+    /* Storage — migrasi otomatis */
     function getSchedules() {
       try {
         var raw = localStorage.getItem(STORAGE_KEY);
         var a = raw ? JSON.parse(raw) : [];
         if (!Array.isArray(a)) return [];
 
-        /* Migrasi data lama: field `mr` → `nik` */
         var needsSave = false;
         a.forEach(function (item) {
           if (!item || typeof item !== 'object') return;
+
           if (item.mr != null && item.nik == null) {
             item.nik = sanitizeNIK(item.mr);
             delete item.mr;
             needsSave = true;
           } else if (item.nik != null) {
-            var cleaned = sanitizeNIK(item.nik);
-            if (cleaned !== item.nik) { item.nik = cleaned; needsSave = true; }
+            var cleanedNik = sanitizeNIK(item.nik);
+            if (cleanedNik !== item.nik) { item.nik = cleanedNik; needsSave = true; }
+          }
+
+          if (item.wa == null && (item.phone != null || item.hp != null)) {
+            item.wa = sanitizeWA(item.phone != null ? item.phone : item.hp);
+            delete item.phone; delete item.hp;
+            needsSave = true;
+          } else if (item.wa != null) {
+            var cleanedWa = sanitizeWA(item.wa);
+            if (cleanedWa !== item.wa) { item.wa = cleanedWa; needsSave = true; }
           }
         });
         if (needsSave) {
@@ -275,17 +311,36 @@
         : (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
     }
 
+    function formatWADisplay(wa) {
+      if (!wa) return '-';
+      var s = String(wa);
+      if (s.charAt(0) === '0') {
+        return s.replace(/(\d{4})(?=\d)/g, '$1-');
+      }
+      return s;
+    }
+    function waLink(wa) {
+      if (!wa) return '';
+      var s = String(wa).replace(/[^0-9]/g, '');
+      if (!s) return '';
+      if (s.charAt(0) === '0') s = '62' + s.slice(1);
+      else if (s.charAt(0) === '8') s = '62' + s;
+      return 'https://wa.me/' + s;
+    }
+
     /* Card builder */
     function buildScheduleCard(item, idx) {
       var badge = getBadge(item.date);
       var prio  = getPriorityMeta(resolvePriority(item));
-      var nikVal = sanitizeNIK(item.nik);   /* ← pastikan angka murni untuk tampilan */
+      var nikVal = sanitizeNIK(item.nik);
+      var waVal  = sanitizeWA(item.wa);
 
       var li = document.createElement('li');
       li.className = 'schedule-card priority-' + prio.cls;
       li.dataset.idx = String(idx);
       li.dataset.priority = prio.key;
       li.dataset.nik = nikVal;
+      li.dataset.wa  = waVal;
 
       var head = document.createElement('div'); head.className = 'sc-head';
 
@@ -298,7 +353,6 @@
       var title = document.createElement('div'); title.className = 'sc-name';
       title.textContent = item.name || 'Pasien';
       var sub = document.createElement('div'); sub.className = 'sc-sub';
-      /* ✅ Tampilkan NIK (angka saja) + label prioritas */
       var nikText = nikVal ? ('NIK: ' + nikVal + ' • ') : '';
       sub.textContent = nikText + prio.label;
       titleWrap.appendChild(title); titleWrap.appendChild(sub);
@@ -310,13 +364,19 @@
       head.appendChild(avatar); head.appendChild(titleWrap); head.appendChild(badgeEl);
 
       var body = document.createElement('div'); body.className = 'sc-body';
-      function makeInfo(iconKey, label, value) {
-        var row = document.createElement('div'); row.className = 'sc-info';
+
+      /* Helper: bikin 1 row info (label + value), siap map ke kolom DB */
+      function makeInfo(iconKey, label, value, link, field) {
+        var row = document.createElement('div');
+        row.className = 'sc-info';
+        if (field) row.dataset.field = field; /* penanda kolom DB */
+
         var ic = document.createElement('span'); ic.className = 'sc-ic ic-' + iconKey;
         ic.setAttribute('aria-hidden', 'true');
         var svg = '';
         switch (iconKey) {
           case 'id':    svg = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="12" r="2.5"/><line x1="14" y1="10" x2="19" y2="10"/><line x1="14" y1="14" x2="19" y2="14"/></svg>'; break;
+          case 'wa':    svg = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/><path d="M16 13.5c-.3-.2-1.8-.9-2.1-1-.3-.1-.5-.2-.7.1s-.8.9-.9 1.1c-.2.2-.3.2-.6.1-.3-.2-1.2-.4-2.3-1.4-.9-.8-1.4-1.7-1.6-2-.2-.3 0-.4.1-.6.1-.1.3-.4.5-.6.2-.2.2-.3.3-.5.1-.2 0-.4 0-.5 0-.1-.7-1.6-.9-2.2-.2-.6-.5-.5-.7-.5h-.6c-.2 0-.5.1-.8.4-.3.3-1 1-1 2.5s1.1 2.9 1.2 3.1c.2.2 2.2 3.4 5.3 4.7.7.3 1.3.5 1.7.6.7.2 1.4.2 1.9.1.6-.1 1.8-.7 2-1.4.2-.7.2-1.3.2-1.4-.1-.1-.3-.2-.6-.3z"/></svg>'; break;
           case 'date':  svg = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="3"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>'; break;
           case 'time':  svg = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg>'; break;
           case 'place': svg = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>'; break;
@@ -326,19 +386,53 @@
 
         var tx = document.createElement('div'); tx.className = 'sc-info-text';
         var lbl = document.createElement('span'); lbl.className = 'sc-lbl'; lbl.textContent = label;
-        var val = document.createElement('span'); val.className = 'sc-val'; val.textContent = value || '-';
+        var val = document.createElement('span'); val.className = 'sc-val';
+        if (link) {
+          var a = document.createElement('a');
+          a.href = link;
+          a.target = '_blank';
+          a.rel = 'noopener noreferrer';
+          a.textContent = value || '-';
+          a.style.color = 'inherit';
+          a.style.textDecoration = 'none';
+          a.style.fontWeight = 'inherit';
+          val.appendChild(a);
+        } else {
+          val.textContent = value || '-';
+        }
         tx.appendChild(lbl); tx.appendChild(val);
         row.appendChild(ic); row.appendChild(tx);
         return row;
       }
-      /* ✅ Baris NIK di body kartu (angka saja) */
-      body.appendChild(makeInfo('id',    'NIK',     nikVal || '-'));
-      body.appendChild(makeInfo('date',  'Tanggal', formatTanggal(item.date)));
-      body.appendChild(makeInfo('time',  'Jam',     item.time  || '-'));
-      body.appendChild(makeInfo('place', 'Tempat',  item.place || '-'));
-      if (item.note) body.appendChild(makeInfo('note', 'Catatan', item.note));
+
+      /* ✅ Tiap field jadi ROW tersendiri — siap di-map ke kolom DB */
+      body.appendChild(makeInfo('id',    'NIK',      nikVal || '-',        null,            'nik'));
+      body.appendChild(makeInfo('wa',    'WhatsApp', formatWADisplay(waVal), waLink(waVal),  'wa'));
+      body.appendChild(makeInfo('date',  'Tanggal',  formatTanggal(item.date), null,         'date'));
+      body.appendChild(makeInfo('time',  'Jam',      item.time  || '-',     null,            'time'));
+      body.appendChild(makeInfo('place', 'Tempat',   item.place || '-',     null,            'place'));
+      if (item.note) body.appendChild(makeInfo('note', 'Catatan', item.note, null,           'note'));
 
       var foot = document.createElement('div'); foot.className = 'sc-foot';
+
+      if (waVal) {
+        var waBtn = document.createElement('a');
+        waBtn.className = 'sc-wa';
+        waBtn.href = waLink(waVal);
+        waBtn.target = '_blank';
+        waBtn.rel = 'noopener noreferrer';
+        waBtn.style.display = 'inline-flex';
+        waBtn.style.alignItems = 'center';
+        waBtn.style.gap = '6px';
+        waBtn.style.marginRight = '8px';
+        waBtn.style.textDecoration = 'none';
+        waBtn.innerHTML =
+          '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+            '<path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>' +
+          '</svg><span>Chat WA</span>';
+        foot.appendChild(waBtn);
+      }
+
       var del = document.createElement('button');
       del.type = 'button'; del.className = 'sc-del';
       del.innerHTML = '<span>Hapus</span>';
@@ -420,11 +514,10 @@
                               String(t.getDate()).padStart(2, '0');
       $('schedTime').value  = '09:00';
       $('schedName').value  = '';
-      /* Reset NIK */
       if (nikInputEl) nikInputEl.value = '';
+      if (waInputEl)  waInputEl.value  = '';
       $('schedPlace').value = '';
       $('schedNote').value  = '';
-      /* Reset prioritas ke default (VVIP / biru) */
       var prioEl = $('schedPriority');
       if (prioEl) prioEl.value = DEFAULT_PRIORITY;
       openModal();
@@ -439,10 +532,10 @@
     var saveBtn = $('saveSchedule');
     if (saveBtn) saveBtn.addEventListener('click', function () {
       var name  = $('schedName').value.trim();
-      /* ✅ Sanitasi NIK → hanya angka, max 16 digit */
       var nik   = sanitizeNIK(nikInputEl ? nikInputEl.value : '');
-      /* Sinkronkan kembali ke input (jika user paste karakter aneh) */
+      var wa    = sanitizeWA(waInputEl ? waInputEl.value : '');
       if (nikInputEl && nikInputEl.value !== nik) nikInputEl.value = nik;
+      if (waInputEl  && waInputEl.value  !== wa)  waInputEl.value  = wa;
 
       var date  = $('schedDate').value;
       var time  = $('schedTime').value;
@@ -460,6 +553,16 @@
                          'Tetap simpan dengan NIK ini?');
         if (!ok) { if (nikInputEl) nikInputEl.focus(); return; }
       }
+
+      if (wa) {
+        if (wa.length < 9 || wa.length > 15) {
+          var okWa = confirm('Nomor WhatsApp yang Anda masukkan ' + wa.length + ' digit.\n' +
+                             'Nomor Indonesia umumnya 10–13 digit (contoh: 081234567890).\n\n' +
+                             'Tetap simpan dengan nomor ini?');
+          if (!okWa) { if (waInputEl) waInputEl.focus(); return; }
+        }
+      }
+
       if (!date)  { alert('Tanggal berobat wajib diisi.'); $('schedDate').focus();  return; }
       if (!place) { alert('Tempat / poli wajib diisi.');   $('schedPlace').focus(); return; }
 
@@ -467,12 +570,13 @@
       data.push({
         id: Date.now(),
         name: name,
-        nik: nik,               /* ← NIK (16 digit, angka murni) — sync dengan patientData[id].nik */
-        priority: priority,     /* ← sinkron dengan patient.html (tierOf) */
-        date: date,
-        time: time,
-        place: place,
-        note: note
+        nik: nik,               /* kolom DB: nik */
+        wa: wa,                 /* kolom DB: wa — ROW tersendiri */
+        priority: priority,     /* kolom DB: priority */
+        date: date,             /* kolom DB: date */
+        time: time,             /* kolom DB: time */
+        place: place,           /* kolom DB: place */
+        note: note              /* kolom DB: note */
       });
       saveSchedules(data);
       renderSchedules();
@@ -486,11 +590,11 @@
       open:   openModal,
       close:  closeModal,
       get:    getSchedules,
-      /* util untuk modul lain (mis. patient.html / index.html) */
       priorityMeta: getPriorityMeta,
       resolvePriority: resolvePriority,
       DEFAULT_PRIORITY: DEFAULT_PRIORITY,
-      sanitizeNIK: sanitizeNIK,   /* ← sync dengan sanitizeNIK() di index.html */
+      sanitizeNIK: sanitizeNIK,
+      sanitizeWA: sanitizeWA,
       STORAGE_KEY: STORAGE_KEY
     };
   })();

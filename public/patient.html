@@ -48,7 +48,7 @@
     body.sharing #toggle.btn.wide { background:var(--brand-green-dark); box-shadow:0 3px 12px rgba(122,176,46,.5); }
     #name, #nik { font-size:16px; min-height:48px; }
 
-    /* ===== FORM LOCK (setelah data disimpan) ===== */
+    /* ===== FORM LOCK (HANYA saat sharing aktif) ===== */
     .form-locked #name,
     .form-locked #nik {
       background: #f2f5f9 !important;
@@ -90,28 +90,7 @@
       100% { transform: scale(1);  opacity: 1; }
     }
 
-    /* Tombol "Ubah Data" */
-    #editIdentityBtn {
-      display: none;
-      width: 100%;
-      min-height: 44px;
-      margin-top: 8px;
-      background: #fff;
-      color: #1B5FAA;
-      border: 1.5px solid #B5CCE5;
-      border-radius: 12px;
-      font-weight: 700;
-      font-size: 14px;
-      cursor: pointer;
-      font-family: inherit;
-      transition: background .15s ease, transform .1s ease;
-      -webkit-tap-highlight-color: transparent;
-    }
-    #editIdentityBtn.show { display: block; }
-    #editIdentityBtn:hover { background: #F2F7FC; }
-    #editIdentityBtn:active { transform: scale(.98); }
-
-    #toggle.btn.wide:focus-visible, #editIdentityBtn:focus-visible,
+    #toggle.btn.wide:focus-visible,
     .hotline-btn:focus-visible, .fab-help:focus-visible,
     .sched-alert-close:focus-visible, .sa-btn:focus-visible,
     .top a[aria-label="Kembali"]:focus-visible, .arrival-btn:focus-visible {
@@ -286,7 +265,6 @@
       <!-- ▲▲▲ /NIK ▲▲▲ -->
 
       <button id="toggle" class="btn wide" type="button">Mulai bagikan lokasi</button>
-      <button id="editIdentityBtn" type="button">✏️ Ubah Data</button>
       <p id="state" class="state" role="status" aria-live="polite">Lokasi belum dibagikan.</p>
     </main>
 
@@ -345,7 +323,7 @@
         <a class="hotline-btn call" id="hotlineCallBtn" href="tel:(021) 4403026">
           <span class="btn-ic" aria-hidden="true">📞</span><span>Telepon Sekarang</span>
         </a>
-        <a class="hotline-btn wa" id="hotlineWaBtn" href="https://wa.me/62" target="_blank" rel="noopener">
+        <a class="hotline-btn wa" id="hotlineWaBtn" href="https://wa.me/620812-8835-7422" target="_blank" rel="noopener">
           <span class="btn-ic" aria-hidden="true">💬</span><span>Chat WhatsApp</span>
         </a>
         <button type="button" class="hotline-btn cancel" id="hotlineCancel">Batal</button>
@@ -383,10 +361,10 @@
         name: 'RS Pelabuhan Jakarta',
         hotlineE164: '+62214403026',
         hotlineDisplay: '(021) 4403026',
-        whatsappE164: '62',
+        whatsappE164: '+6281288357422',
         availableText: 'Tersedia 24 jam · Tekan nomor untuk menelepon',
-        lat: -6.125022,
-        lng: 106.917765,
+        lat: -6.12504,
+        lng: 106.91778,
         arrivalRadiusM: 150
       };
       (function () {
@@ -496,7 +474,7 @@
       });
 
       /* ========== 5. IDENTITAS PASIEN — PERSISTENT ========== */
-      var IDENTITY_KEY = 'patient_identity';   // localStorage: nama + NIK tersimpan
+      var IDENTITY_KEY = 'patient_identity';
       var SESSION_KEY  = 'patient_session_id';
 
       function sanitizeNIK(v) {
@@ -524,13 +502,9 @@
           }));
         } catch (e) {}
       }
-      function clearIdentity() {
-        try { localStorage.removeItem(IDENTITY_KEY); } catch (e) {}
-      }
 
       var nameEl = $('name');
       var nikEl  = $('nik');
-      var editBtn = $('editIdentityBtn');
       var nameSavedBadge = $('nameSavedBadge');
       var nikSavedBadge  = $('nikSavedBadge');
       var cardEl = document.querySelector('.card');
@@ -567,63 +541,76 @@
       }
       bindNIKInput(nikEl);
 
-      /* Lock/unlock form */
+      /* ★ FIX 1: setFormLocked hanya mengunci field, TIDAK menyentuh badge.
+         Badge diurus terpisah oleh updateSavedBadges(). */
       function setFormLocked(locked) {
         if (!cardEl) return;
         cardEl.classList.toggle('form-locked', !!locked);
         if (nameEl) {
           nameEl.readOnly = !!locked;
-          nameEl.disabled = false; // tetap enabled supaya nilai tetap terkirim
+          nameEl.disabled = false;
         }
         if (nikEl) {
           nikEl.readOnly = !!locked;
           nikEl.disabled = false;
         }
-        if (nameSavedBadge) nameSavedBadge.classList.toggle('show', !!locked);
-        if (nikSavedBadge)  nikSavedBadge.classList.toggle('show',  !!locked);
-        if (editBtn) editBtn.classList.toggle('show', !!locked);
       }
 
-      /* Cek apakah identitas sudah lengkap & valid */
+      /* ★ FIX 2: badge "Tersimpan" muncul saat nama + NIK valid,
+         bukan berdasarkan status lock. Live-update saat user mengetik. */
+      function updateSavedBadges() {
+        var valid = isIdentityValid();
+        if (nameSavedBadge) nameSavedBadge.classList.toggle('show', valid);
+        if (nikSavedBadge)  nikSavedBadge.classList.toggle('show',  valid);
+      }
+
       function isIdentityValid() {
         var n = getName();
         var k = getNIK();
         return n.length >= 3 && k.length === 16;
       }
 
-      /* Auto-restore dari localStorage */
+      /* ★ FIX 3: restore identity TIDAK lock form.
+         User bebas mengedit meski ada data tersimpan. */
       (function restoreIdentity() {
         var id = loadIdentity();
         if (!id) return;
         if (nameEl && id.name) nameEl.value = id.name;
         if (nikEl && id.nik)   nikEl.value = id.nik;
+        updateSavedBadges();
         if (id.name && id.nik && id.nik.length === 16) {
-          setFormLocked(true);
           if (st) st.textContent = '✅ Data tersimpan. Klik "Mulai bagikan lokasi" untuk memulai.';
         }
       })();
 
-      /* Tombol "Ubah Data" */
-      if (editBtn) editBtn.addEventListener('click', function () {
-        if (isSharing) {
-          if (!confirm('Hentikan berbagi lokasi dan ubah data pasien?')) return;
-          stopSharing('manual');
-        }
-        setFormLocked(false);
-        clearIdentity();
-        if (st) st.textContent = 'Silakan ubah nama / NIK, lalu klik "Mulai bagikan lokasi".';
-        if (nameEl) { nameEl.focus(); try { nameEl.select(); } catch (e) {} }
+      /* Sinkronisasi jika patient_identity diubah dari tab lain (mis. via jadwal_berobat) */
+      window.addEventListener('storage', function (e) {
+        if (e.key !== IDENTITY_KEY) return;
+        var id = loadIdentity();
+        if (!id) return;
+        if (nameEl) nameEl.value = id.name || '';
+        if (nikEl)  nikEl.value  = id.nik  || '';
+        updateSavedBadges();
+        if (st) st.textContent = 'Data diperbarui. Klik "Mulai bagikan lokasi" untuk memulai.';
       });
 
-      /* Setelah user mengetik dan blur → auto-save jika valid */
+      /* ★ FIX 4: auto-save saat blur TIDAK lock form.
+         User bisa lanjut edit kalau mau. */
       function tryAutoSave() {
-        if (!isIdentityValid()) return false;
+        if (!isIdentityValid()) {
+          updateSavedBadges();
+          return false;
+        }
         saveIdentity(getName(), getNIK());
-        setFormLocked(true);
+        updateSavedBadges();
         return true;
       }
       if (nameEl) nameEl.addEventListener('blur', tryAutoSave);
       if (nikEl)  nikEl.addEventListener('blur',  tryAutoSave);
+
+      /* ★ FIX 5: live update badge saat mengetik */
+      if (nameEl) nameEl.addEventListener('input', updateSavedBadges);
+      if (nikEl)  nikEl.addEventListener('input',  updateSavedBadges);
 
       /* ========== 6. MODAL HOTLINE ========== */
       var hotlineNumberEl = $('hotlineNumber');
@@ -1247,6 +1234,7 @@
         lastLat = null; lastLng = null; lastSent = 0;
 
         setSharing(true);
+        setFormLocked(true); /* ★ kunci field selama sharing aktif */
         if (st) st.textContent = 'Meminta izin lokasi…';
 
         navigator.geolocation.getCurrentPosition(onWatchSuccess, onWatchError,
@@ -1281,9 +1269,10 @@
         removeFromLocalStorage(pid);
         lastLat = null; lastLng = null; lastSent = 0;
         setSharing(false);
+        setFormLocked(false); /* ★ buka kunci field agar bisa diedit lagi */
 
         if (st && reason !== 'arrived' && reason !== 'permission-denied') {
-          st.textContent = 'Lokasi belum dibagikan.';
+          st.textContent = 'Lokasi belum dibagikan. Anda bisa mengubah data jika perlu.';
         }
       }
 
@@ -1324,34 +1313,31 @@
         }
       });
 
-      /* ========== 11. TOMBOL UTAMA — 1 KLIK: SIMPAN + IZIN + INSERT + SHARE ========== */
+      /* ========== 11. TOMBOL UTAMA ========== */
       btn.addEventListener('click', function () {
-        /* Jika sedang sharing → berhenti */
         if (isSharing) { stopSharing('manual'); return; }
 
-        /* Jika form belum locked → validasi + auto-save */
-        if (!cardEl || !cardEl.classList.contains('form-locked')) {
-          if (!getName()) {
-            alert('Isi nama pasien terlebih dahulu.');
-            if (nameEl) nameEl.focus();
-            return;
-          }
-          if (!getNIK()) {
-            alert('Isi NIK pasien (hanya angka) terlebih dahulu.');
-            if (nikEl) nikEl.focus();
-            return;
-          }
-          if (getNIK().length !== 16) {
-            alert('NIK harus terdiri dari 16 digit angka.');
-            if (nikEl) nikEl.focus();
-            return;
-          }
-          /* Simpan identitas + lock form */
-          saveIdentity(getName(), getNIK());
-          setFormLocked(true);
+        /* Validasi input — form selalu editable sebelum sharing */
+        if (!getName()) {
+          alert('Isi nama pasien terlebih dahulu.');
+          if (nameEl) nameEl.focus();
+          return;
+        }
+        if (!getNIK()) {
+          alert('Isi NIK pasien (hanya angka) terlebih dahulu.');
+          if (nikEl) nikEl.focus();
+          return;
+        }
+        if (getNIK().length !== 16) {
+          alert('NIK harus terdiri dari 16 digit angka.');
+          if (nikEl) nikEl.focus();
+          return;
         }
 
-        /* Kirim data pasien dulu (insert / upsert ke table) */
+        /* Simpan identitas + kunci form (via startSharing) */
+        saveIdentity(getName(), getNIK());
+        updateSavedBadges();
+
         if (transport) {
           try {
             transport.send({
@@ -1366,7 +1352,6 @@
         }
         patchLiveEntry({ name: getName(), nik: getNIK() });
 
-        /* Mulai share → memicu izin lokasi + stream GPS */
         startSharing();
       });
 
