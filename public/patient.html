@@ -46,10 +46,77 @@
     #toggle.btn.wide { background:var(--brand-green); color:#fff; border:none; border-radius:14px; font-weight:700; font-size:16px; min-height:52px; box-shadow:0 3px 10px rgba(146,200,62,.35); transition:background .15s ease, transform .1s ease; -webkit-tap-highlight-color:transparent; }
     #toggle.btn.wide:active { background:var(--brand-green-dark); transform:scale(.98); }
     body.sharing #toggle.btn.wide { background:var(--brand-green-dark); box-shadow:0 3px 12px rgba(122,176,46,.5); }
-    #name, #mr { font-size:16px; min-height:48px; }
+    #name, #nik { font-size:16px; min-height:48px; }
 
-    #toggle.btn.wide:focus-visible, .hotline-btn:focus-visible, .fab-help:focus-visible,
-    .sched-alert-close:focus-visible, .sa-btn:focus-visible, .top a[aria-label="Kembali"]:focus-visible { outline:3px solid var(--focus-ring); outline-offset:2px; }
+    /* ===== FORM LOCK (setelah data disimpan) ===== */
+    .form-locked #name,
+    .form-locked #nik {
+      background: #f2f5f9 !important;
+      color: #556 !important;
+      cursor: not-allowed;
+      border-color: #d0d9e3 !important;
+    }
+    .form-locked #name:focus,
+    .form-locked #nik:focus {
+      outline: none;
+      box-shadow: none;
+    }
+
+    /* Label baris dengan indikator "tersimpan" */
+    .label-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-top: 4px;
+    }
+    .label-row label { margin: 0; flex: 1 1 auto; }
+    .saved-badge {
+      display: none;
+      font-size: 10.5px;
+      font-weight: 800;
+      letter-spacing: .3px;
+      color: #16A34A;
+      background: #F0FDF4;
+      border: 1px solid #BBF7D0;
+      padding: 2px 8px;
+      border-radius: 999px;
+      white-space: nowrap;
+      animation: savedPop .28s ease;
+    }
+    .saved-badge.show { display: inline-flex; align-items: center; gap: 3px; }
+    @keyframes savedPop {
+      0%   { transform: scale(.8); opacity: 0; }
+      100% { transform: scale(1);  opacity: 1; }
+    }
+
+    /* Tombol "Ubah Data" */
+    #editIdentityBtn {
+      display: none;
+      width: 100%;
+      min-height: 44px;
+      margin-top: 8px;
+      background: #fff;
+      color: #1B5FAA;
+      border: 1.5px solid #B5CCE5;
+      border-radius: 12px;
+      font-weight: 700;
+      font-size: 14px;
+      cursor: pointer;
+      font-family: inherit;
+      transition: background .15s ease, transform .1s ease;
+      -webkit-tap-highlight-color: transparent;
+    }
+    #editIdentityBtn.show { display: block; }
+    #editIdentityBtn:hover { background: #F2F7FC; }
+    #editIdentityBtn:active { transform: scale(.98); }
+
+    #toggle.btn.wide:focus-visible, #editIdentityBtn:focus-visible,
+    .hotline-btn:focus-visible, .fab-help:focus-visible,
+    .sched-alert-close:focus-visible, .sa-btn:focus-visible,
+    .top a[aria-label="Kembali"]:focus-visible, .arrival-btn:focus-visible {
+      outline:3px solid var(--focus-ring); outline-offset:2px;
+    }
 
     /* ===== Overlay & kotak modal ===== */
     .sched-alert-overlay, .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,.55); backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px); display:none; align-items:flex-end; justify-content:center; padding:0; overscroll-behavior:contain; -webkit-tap-highlight-color:transparent; animation:fadeIn .2s ease; }
@@ -67,50 +134,14 @@
     .is-android .sched-alert-box, .is-android .modal-box { max-height:calc(var(--vh,1vh) * 88); will-change:transform; }
     .modal-handle { width:40px; height:5px; background:#d0d0d0; border-radius:3px; margin:6px auto; flex-shrink:0; }
 
-    /* ===== Popup jadwal: hero berwarna sesuai prioritas ===== */
     .sa-hero { position:relative; flex-shrink:0; color:var(--tier-ink); background:linear-gradient(135deg,var(--tier-a),var(--tier-b)); padding:10px 16px 16px; touch-action:none; }
     .sa-grab { width:40px; height:4px; border-radius:3px; background:rgba(255,255,255,.55); margin:0 auto 12px; }
     .sa-chip { display:inline-flex; align-items:center; gap:6px; background:rgba(255,255,255,.18); border:1px solid rgba(255,255,255,.35); border-radius:999px; padding:4px 11px 4px 8px; font-size:12px; font-weight:700; }
-
-    /* === Baris chip di hero (tier + MR) === */
-    .sa-chip-row {
-      display:flex; flex-wrap:wrap; align-items:center; gap:8px;
-      padding-right:44px; /* ruang untuk tombol close */
-    }
-
-    /* === CHIP NO. MR versi HERO (putih solid, kontras di atas gradient) === */
-    .sa-chip-mr {
-      display:inline-flex; align-items:center; gap:6px;
-      background:#fff;
-      color:var(--tier-a);
-      border:1.5px solid rgba(255,255,255,.9);
-      border-radius:999px;
-      padding:3px 11px 3px 6px;
-      font-size:12px; font-weight:700;
-      box-shadow:0 2px 6px rgba(0,0,0,.18);
-      max-width:100%;
-      overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
-    }
-    .sa-chip-mr .sa-chip-mr-label {
-      display:inline-flex; align-items:center;
-      font-family:var(--font-stack);
-      font-size:9.5px; font-weight:900;
-      text-transform:uppercase; letter-spacing:.6px;
-      color:#fff;
-      background:var(--tier-b);
-      padding:2px 6px;
-      border-radius:999px;
-      flex-shrink:0;
-    }
-    .sa-chip-mr .sa-chip-mr-value {
-      font-family:ui-monospace, "SF Mono", Menlo, Consolas, "Roboto Mono", monospace;
-      font-weight:800;
-      letter-spacing:.4px;
-      color:var(--tier-a);
-      overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
-    }
-    /* Jika MR kosong, sembunyikan chip */
-    .sa-chip-mr.is-empty { display:none; }
+    .sa-chip-row { display:flex; flex-wrap:wrap; align-items:center; gap:8px; padding-right:44px; }
+    .sa-chip-nik { display:inline-flex; align-items:center; gap:6px; background:#fff; color:var(--tier-a); border:1.5px solid rgba(255,255,255,.9); border-radius:999px; padding:3px 11px 3px 6px; font-size:12px; font-weight:700; box-shadow:0 2px 6px rgba(0,0,0,.18); max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .sa-chip-nik .sa-chip-nik-label { display:inline-flex; align-items:center; font-family:var(--font-stack); font-size:9.5px; font-weight:900; text-transform:uppercase; letter-spacing:.6px; color:#fff; background:var(--tier-b); padding:2px 6px; border-radius:999px; flex-shrink:0; }
+    .sa-chip-nik .sa-chip-nik-value { font-family:ui-monospace, "SF Mono", Menlo, Consolas, "Roboto Mono", monospace; font-weight:800; letter-spacing:.4px; color:var(--tier-a); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .sa-chip-nik.is-empty { display:none; }
 
     .sched-alert-close { position:absolute; top:12px; right:12px; background:rgba(255,255,255,.2); border:none; width:36px; height:36px; border-radius:50%; font-size:15px; color:#fff; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:background .15s ease, transform .1s ease; -webkit-tap-highlight-color:transparent; }
     .sched-alert-close:active { background:rgba(255,255,255,.38); transform:scale(.9); }
@@ -119,7 +150,6 @@
 
     .sched-alert-body { overflow-y:auto; -webkit-overflow-scrolling:touch; overscroll-behavior:contain; padding:14px calc(16px + var(--safe-right)) 4px calc(16px + var(--safe-left)); display:flex; flex-direction:column; gap:10px; flex:1 1 auto; min-height:0; touch-action:pan-y; }
 
-    /* kartu jadwal utama (terdekat) */
     .sa-main { background:var(--tier-soft); border:1px solid var(--tier-line); border-left:5px solid var(--tier-b); border-radius:14px; padding:14px; display:flex; flex-direction:column; gap:8px; }
     .sa-top { display:flex; align-items:center; gap:8px; }
     .sa-name { font-weight:700; font-size:15px; color:#1a1a1a; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -129,50 +159,16 @@
     .sa-row .ic { width:18px; text-align:center; flex-shrink:0; }
     .sa-note { font-size:12.5px; color:#555; background:rgba(255,255,255,.7); border-radius:10px; padding:8px 10px; line-height:1.4; }
 
-    /* ===== CHIP NO. MR di kartu utama (bawah nama) ===== */
-    .sa-mr {
-      display:inline-flex; align-items:center; gap:8px;
-      align-self:flex-start;
-      padding:5px 12px 5px 8px;
-      border-radius:999px;
-      background:#fff;
-      color:var(--tier-a);
-      border:1.5px solid var(--tier-b);
-      box-shadow:0 1px 4px rgba(0,0,0,.06);
-      font-size:13px; font-weight:800; letter-spacing:.4px;
-      font-family:ui-monospace, "SF Mono", Menlo, Consolas, "Roboto Mono", monospace;
-      line-height:1.2;
-      max-width:100%;
-      overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
-    }
-    .sa-mr .sa-mr-label {
-      display:inline-flex; align-items:center; gap:3px;
-      font-family:var(--font-stack);
-      font-size:10px; font-weight:900;
-      text-transform:uppercase; letter-spacing:.6px;
-      color:#fff;
-      background:var(--tier-b);
-      padding:2px 7px;
-      border-radius:999px;
-      flex-shrink:0;
-    }
-    .sa-mr .sa-mr-value { color:var(--tier-a); }
+    .sa-nik { display:inline-flex; align-items:center; gap:8px; align-self:flex-start; padding:5px 12px 5px 8px; border-radius:999px; background:#fff; color:var(--tier-a); border:1.5px solid var(--tier-b); box-shadow:0 1px 4px rgba(0,0,0,.06); font-size:13px; font-weight:800; letter-spacing:.4px; font-family:ui-monospace, "SF Mono", Menlo, Consolas, "Roboto Mono", monospace; line-height:1.2; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .sa-nik .sa-nik-label { display:inline-flex; align-items:center; gap:3px; font-family:var(--font-stack); font-size:10px; font-weight:900; text-transform:uppercase; letter-spacing:.6px; color:#fff; background:var(--tier-b); padding:2px 7px; border-radius:999px; flex-shrink:0; }
+    .sa-nik .sa-nik-value { color:var(--tier-a); }
 
-    /* kartu jadwal berikutnya (ringkas) */
     .sa-more-title { margin:4px 0 0; font-size:12.5px; font-weight:700; color:#666; }
     .sa-item { display:flex; align-items:center; gap:10px; border:1px solid #e8e8e8; border-radius:12px; padding:10px 12px; }
     .sa-item .sa-info { flex:1; min-width:0; }
     .sa-item .sa-line1 { font-size:13px; font-weight:700; color:#222; }
     .sa-item .sa-line2 { font-size:12px; color:#666; margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:flex; align-items:center; gap:6px; flex-wrap:nowrap; }
-    .sa-item .sa-line2 .mini-mr {
-      display:inline-flex; align-items:center;
-      font-family:ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-      font-size:10.5px; font-weight:800; letter-spacing:.4px;
-      padding:1px 7px; border-radius:999px;
-      background:var(--tier-soft); color:var(--tier-a);
-      border:1px solid var(--tier-line);
-      flex-shrink:0;
-    }
+    .sa-item .sa-line2 .mini-nik { display:inline-flex; align-items:center; font-family:ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size:10.5px; font-weight:800; letter-spacing:.4px; padding:1px 7px; border-radius:999px; background:var(--tier-soft); color:var(--tier-a); border:1px solid var(--tier-line); flex-shrink:0; }
     .sa-item .sa-line2 .mini-name { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0; }
 
     .sa-badge { display:inline-block; padding:3px 9px; border-radius:10px; font-size:11px; font-weight:700; flex-shrink:0; white-space:nowrap; }
@@ -194,7 +190,6 @@
     .sa-btn-row { display:flex; gap:8px; }
     .sa-btn-row .sa-btn { flex:1; padding:10px 8px; }
 
-    /* ===== Hotline ===== */
     .hotline-hero { display:flex; flex-direction:column; align-items:center; text-align:center; padding:4px 0 8px; }
     .hotline-icon { width:68px; height:68px; border-radius:50%; background:var(--brand-blue-light); color:var(--brand-blue); display:flex; align-items:center; justify-content:center; font-size:32px; margin-bottom:10px; box-shadow:0 4px 14px rgba(27,95,170,.18); animation:hotlinePulse 2s ease-in-out infinite; }
     @keyframes hotlinePulse { 0%,100%{transform:scale(1);} 50%{transform:scale(1.05);} }
@@ -214,6 +209,23 @@
     .hotline-btn.cancel:active { background:#e0e0e0; }
     .hotline-btn .btn-ic { font-size:18px; line-height:1; }
 
+    /* ===== Arrival modal ===== */
+    .arrival-overlay { position:fixed; inset:0; background:rgba(0,0,0,.62); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); display:none; align-items:center; justify-content:center; z-index:11500; padding:20px; animation:fadeIn .25s ease; }
+    .arrival-overlay.show { display:flex; }
+    .arrival-box { background:#fff; border-radius:22px; padding:28px 22px 22px; max-width:380px; width:100%; text-align:center; box-shadow:0 20px 60px rgba(0,0,0,.35); animation:arrivalPop .42s cubic-bezier(.22,1,.36,1); }
+    @keyframes arrivalPop { 0%{transform:scale(.7);opacity:0;} 60%{transform:scale(1.03);opacity:1;} 100%{transform:scale(1);opacity:1;} }
+    .arrival-icon-wrap { width:92px; height:92px; border-radius:50%; background:linear-gradient(135deg,#16A34A,#22C55E); display:flex; align-items:center; justify-content:center; margin:0 auto 16px; box-shadow:0 8px 26px rgba(22,163,74,.38); animation:arrivalPulse 2s ease-in-out infinite; }
+    @keyframes arrivalPulse { 0%,100%{transform:scale(1);box-shadow:0 8px 26px rgba(22,163,74,.38);} 50%{transform:scale(1.06);box-shadow:0 12px 36px rgba(22,163,74,.55);} }
+    .arrival-icon { color:#fff; font-size:52px; font-weight:900; line-height:1; transform:translateY(-2px); font-family:-apple-system, system-ui, sans-serif; }
+    .arrival-title { margin:0 0 6px; font-size:22px; font-weight:800; color:#16A34A; letter-spacing:.2px; }
+    .arrival-subtitle { margin:0 0 14px; font-size:14px; color:#444; line-height:1.5; }
+    .arrival-subtitle b { color:#1B5FAA; }
+    .arrival-info { background:#F0FDF4; border:1px solid #BBF7D0; border-radius:12px; padding:10px 14px; font-size:12.5px; color:#166534; line-height:1.55; font-family:ui-monospace, Menlo, Consolas, monospace; margin-bottom:14px; text-align:left; }
+    .arrival-info b { color:#166534; }
+    .arrival-note { margin:0 0 18px; font-size:12.5px; color:#777; line-height:1.55; }
+    .arrival-btn { width:100%; min-height:50px; background:linear-gradient(135deg,#16A34A,#22C55E); color:#fff; border:none; border-radius:14px; font-size:15px; font-weight:800; font-family:inherit; cursor:pointer; box-shadow:0 4px 14px rgba(22,163,74,.35); transition:transform .12s ease, box-shadow .15s ease; -webkit-tap-highlight-color:transparent; letter-spacing:.3px; }
+    .arrival-btn:active { transform:scale(.97); box-shadow:0 2px 8px rgba(22,163,74,.4); }
+
     @media (min-width:560px) {
       .sched-alert-overlay, .modal-overlay { align-items:center; padding:20px; }
       .sched-alert-box, .modal-box { border-radius:18px; max-width:440px; max-height:86vh; animation:popIn .26s cubic-bezier(.32,.72,0,1); }
@@ -226,14 +238,17 @@
       .sa-hero h2 { font-size:17px; }
       .sa-when { font-size:19px; }
       .hotline-number { font-size:22px; }
-      .sa-mr { font-size:12px; padding:4px 10px 4px 6px; }
-      .sa-mr .sa-mr-label { font-size:9px; padding:2px 6px; }
+      .sa-nik { font-size:12px; padding:4px 10px 4px 6px; }
+      .sa-nik .sa-nik-label { font-size:9px; padding:2px 6px; }
       .sa-chip { font-size:11px; padding:3px 9px 3px 7px; }
-      .sa-chip-mr { font-size:11px; padding:2px 9px 2px 5px; }
-      .sa-chip-mr .sa-chip-mr-label { font-size:9px; padding:1px 5px; }
+      .sa-chip-nik { font-size:11px; padding:2px 9px 2px 5px; }
+      .sa-chip-nik .sa-chip-nik-label { font-size:9px; padding:1px 5px; }
+      .arrival-title { font-size:19px; }
+      .arrival-icon-wrap { width: 78px; height: 78px; }
+      .arrival-icon { font-size: 44px; }
     }
     @media (prefers-reduced-motion:reduce) {
-      .sched-alert-overlay, .modal-overlay, .sched-alert-box, .modal-box, .sa-badge, .sa-btn, .hotline-btn, .fab-help, .radar-logo, .hotline-icon { animation:none !important; transition:none !important; }
+      .sched-alert-overlay, .modal-overlay, .sched-alert-box, .modal-box, .sa-badge, .sa-btn, .hotline-btn, .fab-help, .radar-logo, .hotline-icon, .arrival-overlay, .arrival-box, .arrival-icon-wrap, .saved-badge { animation:none !important; transition:none !important; }
     }
   </style>
 </head>
@@ -248,23 +263,30 @@
            onerror="this.outerHTML='<div class=\'radar\' aria-hidden=\'true\'>📍</div>'">
 
       <h1>Bagikan lokasi Anda</h1>
-      <p class="hint">Petugas akan melihat posisi Anda secara langsung selama tombol di bawah aktif.</p>
+      <p class="hint">Isi data sekali saja. Setelah itu, cukup klik <b>Mulai bagikan lokasi</b> — petugas akan melihat posisi Anda secara langsung. Berbagi lokasi akan <b>otomatis berhenti</b> saat Anda tiba di rumah sakit.</p>
 
-      <label for="name">Nama pasien</label>
+      <div class="label-row">
+        <label for="name">Nama pasien</label>
+        <span class="saved-badge" id="nameSavedBadge">✓ Tersimpan</span>
+      </div>
       <input id="name" type="text" autocomplete="name" inputmode="text" placeholder="Contoh: Budi Santoso">
 
-      <!-- ▼▼▼ NO. MR — HANYA ANGKA ▼▼▼ -->
-      <label for="mr">No. MR (Rekam Medis)</label>
-      <input id="mr"
+      <!-- ▼▼▼ NIK — HANYA ANGKA (16 digit) ▼▼▼ -->
+      <div class="label-row">
+        <label for="nik">NIK (Nomor Induk Kependudukan)</label>
+        <span class="saved-badge" id="nikSavedBadge">✓ Tersimpan</span>
+      </div>
+      <input id="nik"
              type="text"
              autocomplete="off"
              inputmode="numeric"
              pattern="[0-9]*"
-             maxlength="20"
-             placeholder="Contoh: 00123456">
-      <!-- ▲▲▲ /NO. MR ▲▲▲ -->
+             maxlength="16"
+             placeholder="Contoh: 3174012345670001">
+      <!-- ▲▲▲ /NIK ▲▲▲ -->
 
       <button id="toggle" class="btn wide" type="button">Mulai bagikan lokasi</button>
+      <button id="editIdentityBtn" type="button">✏️ Ubah Data</button>
       <p id="state" class="state" role="status" aria-live="polite">Lokasi belum dibagikan.</p>
     </main>
 
@@ -278,25 +300,21 @@
     <button class="fab-help" type="button" aria-label="Panggil bantuan" id="helpBtn">📞</button>
   </div>
 
-  <!-- ====== MODAL NOTIFIKASI JADWAL BEROBAT (versi prioritas) ====== -->
+  <!-- ====== MODAL NOTIFIKASI JADWAL BEROBAT ====== -->
   <div class="sched-alert-overlay" id="schedAlertOverlay" role="dialog" aria-modal="true" aria-labelledby="schedAlertTitle" aria-describedby="schedAlertSubtitle">
     <div class="sched-alert-box" id="schedAlertBox">
       <div class="sa-hero" id="schedHero">
         <div class="sa-grab" aria-hidden="true"></div>
-
-        <!-- ▼▼▼ CHIP: TIER PRIORITAS + NO. MR ▼▼▼ -->
         <div class="sa-chip-row">
           <span class="sa-chip">
             <span id="schedTierIcon" aria-hidden="true"></span>
             <span id="schedTierLabel">VVIP</span>
           </span>
-          <span class="sa-chip-mr is-empty" id="schedMRChip" aria-live="polite">
-            <span class="sa-chip-mr-label">No. MR</span>
-            <span class="sa-chip-mr-value" id="schedMRValue">—</span>
+          <span class="sa-chip-nik is-empty" id="schedNIKChip" aria-live="polite">
+            <span class="sa-chip-nik-label">NIK</span>
+            <span class="sa-chip-nik-value" id="schedNIKValue">—</span>
           </span>
         </div>
-        <!-- ▲▲▲ /CHIP: TIER PRIORITAS + NO. MR ▲▲▲ -->
-
         <button type="button" class="sched-alert-close" id="schedAlertClose" aria-label="Tutup">✕</button>
         <h2 id="schedAlertTitle">Pengingat Jadwal Berobat</h2>
         <p id="schedAlertSubtitle">Anda memiliki jadwal berobat dalam waktu dekat.</p>
@@ -335,6 +353,23 @@
     </div>
   </div>
 
+  <!-- ====== MODAL KEDATANGAN (auto-stop) ====== -->
+  <div class="arrival-overlay" id="arrivalOverlay" role="dialog" aria-modal="true" aria-labelledby="arrivalTitle">
+    <div class="arrival-box">
+      <div class="arrival-icon-wrap" aria-hidden="true">
+        <div class="arrival-icon">✓</div>
+      </div>
+      <h2 class="arrival-title" id="arrivalTitle">Selamat datang!</h2>
+      <p class="arrival-subtitle">Anda sudah tiba di <b id="arrivalHospitalName">RS Pelabuhan Jakarta</b></p>
+      <div class="arrival-info" id="arrivalInfo"></div>
+      <p class="arrival-note">
+        ✅ Berbagi lokasi dihentikan otomatis.<br>
+        Petugas akan segera menemui Anda di lobi / area penerimaan.
+      </p>
+      <button class="arrival-btn" id="arrivalOk" type="button">Mengerti</button>
+    </div>
+  </div>
+
   <script src="../config.php"></script>
   <script src="../js/transport.js"></script>
   <script src="../js/patient.js"></script>
@@ -349,10 +384,22 @@
         hotlineE164: '+62214403026',
         hotlineDisplay: '(021) 4403026',
         whatsappE164: '62',
-        availableText: 'Tersedia 24 jam · Tekan nomor untuk menelepon'
+        availableText: 'Tersedia 24 jam · Tekan nomor untuk menelepon',
+        lat: -6.125022,
+        lng: 106.917765,
+        arrivalRadiusM: 150
       };
+      (function () {
+        var cfg = window.CONFIG || {};
+        var h = cfg.HOSPITAL;
+        if (h) {
+          if (h.name) HOSPITAL.name = h.name;
+          if (h.lat != null && isFinite(Number(h.lat))) HOSPITAL.lat = Number(h.lat);
+          if (h.lng != null && isFinite(Number(h.lng))) HOSPITAL.lng = Number(h.lng);
+          if (h.arrivalRadiusM != null && isFinite(Number(h.arrivalRadiusM))) HOSPITAL.arrivalRadiusM = Number(h.arrivalRadiusM);
+        }
+      })();
 
-      /* Tema popup per tingkat prioritas */
       var TIERS = {
         merah:  { label: 'President Suite', a: '#0F3D75', b: '#1B5FAA', soft: '#E6EEF8', line: '#B5CCE5', color: '#1B5FAA', icon: '👑',
                   hello: 'Tim President Suite siap mendampingi kunjungan Anda.' },
@@ -448,14 +495,51 @@
         document.body.style.width = ''; document.body.style.overflow = '';
       });
 
-      /* ========== 5. INPUT NO. MR: HANYA ANGKA ========== */
-      function sanitizeMR(v) {
-        return String(v == null ? '' : v).replace(/[^0-9]/g, '');
+      /* ========== 5. IDENTITAS PASIEN — PERSISTENT ========== */
+      var IDENTITY_KEY = 'patient_identity';   // localStorage: nama + NIK tersimpan
+      var SESSION_KEY  = 'patient_session_id';
+
+      function sanitizeNIK(v) {
+        return String(v == null ? '' : v).replace(/[^0-9]/g, '').slice(0, 16);
       }
-      function bindMRInput(el) {
+
+      function loadIdentity() {
+        try {
+          var raw = localStorage.getItem(IDENTITY_KEY);
+          if (!raw) return null;
+          var obj = JSON.parse(raw);
+          if (!obj || typeof obj !== 'object') return null;
+          return {
+            name: String(obj.name || '').trim(),
+            nik:  sanitizeNIK(obj.nik || '')
+          };
+        } catch (e) { return null; }
+      }
+      function saveIdentity(name, nik) {
+        try {
+          localStorage.setItem(IDENTITY_KEY, JSON.stringify({
+            name: String(name || '').trim(),
+            nik:  sanitizeNIK(nik || ''),
+            savedAt: Date.now()
+          }));
+        } catch (e) {}
+      }
+      function clearIdentity() {
+        try { localStorage.removeItem(IDENTITY_KEY); } catch (e) {}
+      }
+
+      var nameEl = $('name');
+      var nikEl  = $('nik');
+      var editBtn = $('editIdentityBtn');
+      var nameSavedBadge = $('nameSavedBadge');
+      var nikSavedBadge  = $('nikSavedBadge');
+      var cardEl = document.querySelector('.card');
+
+      /* Bind filter angka ke input NIK */
+      function bindNIKInput(el) {
         if (!el) return;
         el.addEventListener('input', function () {
-          var cleaned = sanitizeMR(el.value);
+          var cleaned = sanitizeNIK(el.value);
           if (el.value !== cleaned) el.value = cleaned;
         });
         el.addEventListener('paste', function (e) {
@@ -464,24 +548,82 @@
           var pasted = txt.getData('text') || '';
           if (/[^0-9]/.test(pasted)) {
             e.preventDefault();
-            var cleaned = sanitizeMR(pasted);
+            var cleaned = sanitizeNIK(pasted);
             var start = el.selectionStart || 0;
             var end = el.selectionEnd || 0;
             var val = el.value || '';
             var next = val.slice(0, start) + cleaned + val.slice(end);
-            el.value = sanitizeMR(next);
-            var pos = start + cleaned.length;
+            el.value = sanitizeNIK(next);
+            var pos = Math.min(start + cleaned.length, 16);
             try { el.setSelectionRange(pos, pos); } catch (err) {}
             el.dispatchEvent(new Event('input', { bubbles: true }));
           }
         });
-        /* Blokir tombol selain angka (keyboard fisik) */
         el.addEventListener('keypress', function (e) {
           if (e.key && e.key.length === 1 && !/[0-9]/.test(e.key) && !e.ctrlKey && !e.metaKey) {
             e.preventDefault();
           }
         });
       }
+      bindNIKInput(nikEl);
+
+      /* Lock/unlock form */
+      function setFormLocked(locked) {
+        if (!cardEl) return;
+        cardEl.classList.toggle('form-locked', !!locked);
+        if (nameEl) {
+          nameEl.readOnly = !!locked;
+          nameEl.disabled = false; // tetap enabled supaya nilai tetap terkirim
+        }
+        if (nikEl) {
+          nikEl.readOnly = !!locked;
+          nikEl.disabled = false;
+        }
+        if (nameSavedBadge) nameSavedBadge.classList.toggle('show', !!locked);
+        if (nikSavedBadge)  nikSavedBadge.classList.toggle('show',  !!locked);
+        if (editBtn) editBtn.classList.toggle('show', !!locked);
+      }
+
+      /* Cek apakah identitas sudah lengkap & valid */
+      function isIdentityValid() {
+        var n = getName();
+        var k = getNIK();
+        return n.length >= 3 && k.length === 16;
+      }
+
+      /* Auto-restore dari localStorage */
+      (function restoreIdentity() {
+        var id = loadIdentity();
+        if (!id) return;
+        if (nameEl && id.name) nameEl.value = id.name;
+        if (nikEl && id.nik)   nikEl.value = id.nik;
+        if (id.name && id.nik && id.nik.length === 16) {
+          setFormLocked(true);
+          if (st) st.textContent = '✅ Data tersimpan. Klik "Mulai bagikan lokasi" untuk memulai.';
+        }
+      })();
+
+      /* Tombol "Ubah Data" */
+      if (editBtn) editBtn.addEventListener('click', function () {
+        if (isSharing) {
+          if (!confirm('Hentikan berbagi lokasi dan ubah data pasien?')) return;
+          stopSharing('manual');
+        }
+        setFormLocked(false);
+        clearIdentity();
+        if (st) st.textContent = 'Silakan ubah nama / NIK, lalu klik "Mulai bagikan lokasi".';
+        if (nameEl) { nameEl.focus(); try { nameEl.select(); } catch (e) {} }
+      });
+
+      /* Setelah user mengetik dan blur → auto-save jika valid */
+      function tryAutoSave() {
+        if (!isIdentityValid()) return false;
+        saveIdentity(getName(), getNIK());
+        setFormLocked(true);
+        return true;
+      }
+      if (nameEl) nameEl.addEventListener('blur', tryAutoSave);
+      if (nikEl)  nikEl.addEventListener('blur',  tryAutoSave);
 
       /* ========== 6. MODAL HOTLINE ========== */
       var hotlineNumberEl = $('hotlineNumber');
@@ -525,7 +667,42 @@
       $('hotlineCancel').addEventListener('click', closeHotline);
       hotlineModal.addEventListener('click', function (e) { if (e.target === hotlineModal) closeHotline(); });
 
-      /* ========== 7. NOTIFIKASI JADWAL BEROBAT (PRIORITAS) ========== */
+      /* ========== 7. MODAL KEDATANGAN ========== */
+      var arrivalOverlay = $('arrivalOverlay');
+      var arrivalOk = $('arrivalOk');
+      var arrivalInfo = $('arrivalInfo');
+      var arrivalHospitalName = $('arrivalHospitalName');
+      var arrivalPushedHistory = false;
+
+      if (arrivalHospitalName) arrivalHospitalName.textContent = HOSPITAL.name;
+
+      function showArrivalModal(info) {
+        if (!arrivalOverlay) return;
+        if (arrivalInfo && info) arrivalInfo.innerHTML = info;
+        if (schedOpen) closeSchedModal(false);
+        if (hotlineOpen) closeHotline();
+        arrivalOverlay.classList.add('show');
+        lockBody();
+        if (isAndroid) {
+          try { history.pushState({ modal: 'arrival' }, ''); arrivalPushedHistory = true; } catch (e) {}
+        }
+        setTimeout(function () { try { arrivalOk.focus({ preventScroll: true }); } catch (e) {} }, 80);
+      }
+      function closeArrivalModal() {
+        if (!arrivalOverlay || !arrivalOverlay.classList.contains('show')) return;
+        arrivalOverlay.classList.remove('show');
+        unlockBody();
+        if (isAndroid && arrivalPushedHistory) {
+          arrivalPushedHistory = false;
+          try { history.back(); } catch (e) {}
+        }
+      }
+      if (arrivalOk) arrivalOk.addEventListener('click', closeArrivalModal);
+      if (arrivalOverlay) arrivalOverlay.addEventListener('click', function (e) {
+        if (e.target === arrivalOverlay) closeArrivalModal();
+      });
+
+      /* ========== 8. NOTIFIKASI JADWAL BEROBAT ========== */
       var STORAGE_KEY = 'jadwal_berobat_pasien';
       var SEEN_KEY = 'jadwal_berobat_seen';
       var SNOOZE_MS = 60 * 60 * 1000;
@@ -541,9 +718,8 @@
       var snoozeBtn = $('schedSnooze');
       var conciergeBtn = $('schedConcierge');
 
-      /* Chip No. MR di hero */
-      var mrChipEl  = $('schedMRChip');
-      var mrValueEl = $('schedMRValue');
+      var nikChipEl  = $('schedNIKChip');
+      var nikValueEl = $('schedNIKValue');
 
       var currentShown = [];
       var snoozeTimer = null;
@@ -553,7 +729,7 @@
         try { var raw = localStorage.getItem(STORAGE_KEY); var a = raw ? JSON.parse(raw) : []; return Array.isArray(a) ? a : []; }
         catch (e) { return []; }
       }
-      function schedKey(item) { return [item.name || '', item.mr || '', item.date || '', item.time || ''].join('|').toLowerCase(); }
+      function schedKey(item) { return [item.name || '', item.nik || '', item.date || '', item.time || ''].join('|').toLowerCase(); }
       function getSeen() {
         try { return JSON.parse(sessionStorage.getItem(SEEN_KEY) || '[]') || []; } catch (e) { return []; }
       }
@@ -637,7 +813,6 @@
         return row;
       }
 
-      /* Terapkan warna tema sesuai tier */
       function applyTier(key) {
         var t = TIERS[tierOf(key)];
         var s = overlay.style;
@@ -648,20 +823,18 @@
         return t;
       }
 
-      /* Isi / sembunyikan chip No. MR di hero */
-      function setHeroMR(mr) {
-        var val = sanitizeMR(mr);
-        if (!mrChipEl || !mrValueEl) return;
+      function setHeroNIK(nik) {
+        var val = sanitizeNIK(nik);
+        if (!nikChipEl || !nikValueEl) return;
         if (val) {
-          mrValueEl.textContent = val;
-          mrChipEl.classList.remove('is-empty');
+          nikValueEl.textContent = val;
+          nikChipEl.classList.remove('is-empty');
         } else {
-          mrValueEl.textContent = '—';
-          mrChipEl.classList.add('is-empty');
+          nikValueEl.textContent = '—';
+          nikChipEl.classList.add('is-empty');
         }
       }
 
-      /* ---- Fokus: jebakan Tab di dalam popup ---- */
       function focusables() {
         return Array.prototype.slice.call(box.querySelectorAll('button:not([disabled])'));
       }
@@ -696,7 +869,9 @@
 
       if (isAndroid) {
         window.addEventListener('popstate', function () {
-          if (hotlineOpen) {
+          if (arrivalOverlay && arrivalOverlay.classList.contains('show')) {
+            arrivalOverlay.classList.remove('show'); unlockBody(); arrivalPushedHistory = false;
+          } else if (hotlineOpen) {
             hotlineOpen = false; hotlineModal.classList.remove('show'); unlockBody(); hotlinePushedHistory = false;
           } else if (schedOpen) {
             schedOpen = false; overlay.classList.remove('show'); unlockBody(); schedPushedHistory = false;
@@ -710,8 +885,9 @@
       overlay.addEventListener('click', function (e) { if (e.target === overlay) closeSchedModal(); });
       document.addEventListener('keydown', function (e) {
         if (e.key === 'Escape') {
-          if (schedOpen) closeSchedModal();
-          if (hotlineOpen) closeHotline();
+          if (arrivalOverlay && arrivalOverlay.classList.contains('show')) closeArrivalModal();
+          else if (schedOpen) closeSchedModal();
+          else if (hotlineOpen) closeHotline();
         }
         trapTab(e);
       });
@@ -729,7 +905,6 @@
         setTimeout(openHotline, 120);
       });
 
-      /* Geser ke bawah untuk menutup (HP) */
       (function () {
         var startY = null, dy = 0;
         hero.addEventListener('touchstart', function (e) {
@@ -749,17 +924,15 @@
         });
       })();
 
-      /* ---- Bangun chip No. MR (di dalam kartu) ---- */
-      function buildMRChip(mr) {
-        var chip = el('span', 'sa-mr');
-        var lbl = el('span', 'sa-mr-label', 'No. MR');
-        var val = el('span', 'sa-mr-value', sanitizeMR(mr));
+      function buildNIKChip(nik) {
+        var chip = el('span', 'sa-nik');
+        var lbl = el('span', 'sa-nik-label', 'NIK');
+        var val = el('span', 'sa-nik-value', sanitizeNIK(nik));
         chip.appendChild(lbl);
         chip.appendChild(val);
         return chip;
       }
 
-      /* ---- Bangun isi popup ---- */
       function buildCard(item, tierKey) {
         var badge = getBadge(item);
         var card = el('div', 'sa-main');
@@ -769,7 +942,7 @@
         top.appendChild(el('span', 'sa-badge ' + badge.cls, badge.text));
         card.appendChild(top);
 
-        if (item.mr) card.appendChild(buildMRChip(item.mr));
+        if (item.nik) card.appendChild(buildNIKChip(item.nik));
 
         card.appendChild(el('div', 'sa-when', formatTanggal(item.date) + (item.time ? ' · ' + item.time : '')));
         card.appendChild(el('div', 'sa-count', countdownText(item)));
@@ -786,10 +959,10 @@
         info.appendChild(el('div', 'sa-line1', formatTanggal(item.date) + (item.time ? ' · ' + item.time : '')));
 
         var line2 = el('div', 'sa-line2');
-        if (item.mr) {
-          var miniMr = el('span', 'mini-mr', 'MR ' + sanitizeMR(item.mr));
-          miniMr.setAttribute('aria-label', 'No. MR ' + sanitizeMR(item.mr));
-          line2.appendChild(miniMr);
+        if (item.nik) {
+          var miniNik = el('span', 'mini-nik', 'NIK ' + sanitizeNIK(item.nik));
+          miniNik.setAttribute('aria-label', 'NIK ' + sanitizeNIK(item.nik));
+          line2.appendChild(miniNik);
         }
         line2.appendChild(el('span', 'mini-name', (item.name || 'Pasien') + ' — ' + (item.place || '-')));
         info.appendChild(line2);
@@ -825,12 +998,12 @@
         var tier = applyTier(tierKey);
         var first = upcoming[0];
         var patientName = (first.name || getName() || '').trim();
-        var patientMR   = sanitizeMR(first.mr || getMR() || '');
+        var patientNIK  = sanitizeNIK(first.nik || getNIK() || '');
 
-        setHeroMR(patientMR);
+        setHeroNIK(patientNIK);
 
         var titleLabel = patientName;
-        if (patientMR) titleLabel += (titleLabel ? ' · MR ' : 'MR ') + patientMR;
+        if (patientNIK) titleLabel += (titleLabel ? ' · NIK ' : 'NIK ') + patientNIK;
         titleEl.textContent = (titleLabel ? greeting() + ', ' + titleLabel : greeting()) + '.';
 
         var n = upcoming.length;
@@ -855,44 +1028,36 @@
         pendingOpenTimer = setTimeout(openSchedModal, force ? 0 : 500);
       }
 
-      /* Cek jadwal — cocokkan MR dulu, lalu nama */
       function checkSchedulesForPatient() {
         var name = getName().toLowerCase();
-        var mr   = sanitizeMR(getMR()).toLowerCase();
+        var nik  = sanitizeNIK(getNIK()).toLowerCase();
 
         var hasName = name.length >= 3;
-        var hasMR   = mr.length   >= 3;
-        if (!hasName && !hasMR) return;
+        var hasNIK  = nik.length   >= 3;
+        if (!hasName && !hasNIK) return;
 
         var all = getSchedules();
         if (!all.length) return;
 
         var filtered = all.filter(function (item) {
           var itemName = (item.name || '').toLowerCase();
-          var itemMR   = sanitizeMR(item.mr || '').toLowerCase();
-          if (hasMR && itemMR && itemMR === mr) return true;
+          var itemNIK  = sanitizeNIK(item.nik || '').toLowerCase();
+          if (hasNIK && itemNIK && itemNIK === nik) return true;
           if (hasName && itemName.indexOf(name) !== -1) return true;
           return false;
         });
         if (filtered.length) showScheduleAlert(filtered, false);
       }
 
-      var nameEl = $('name');
-      var mrEl   = $('mr');
-
-      /* Pasang filter angka ke input No. MR */
-      bindMRInput(mrEl);
-
       var debounceTimer;
       function scheduleCheck() {
         clearTimeout(debounceTimer);
         debounceTimer = setTimeout(function () {
-          if (getName().length >= 3 || getMR().length >= 3) checkSchedulesForPatient();
+          if (getName().length >= 3 || getNIK().length >= 3) checkSchedulesForPatient();
         }, 800);
       }
-
       if (nameEl) nameEl.addEventListener('input', scheduleCheck);
-      if (mrEl)   mrEl.addEventListener('input',   scheduleCheck);
+      if (nikEl)  nikEl.addEventListener('input',  scheduleCheck);
 
       document.addEventListener('visibilitychange', function () {
         if (!document.hidden && !schedOpen && !hotlineOpen) checkSchedulesForPatient();
@@ -902,8 +1067,7 @@
       });
       ready(function () { checkSchedulesForPatient(); });
 
-      /* ========== 8. IDENTITAS PASIEN ========== */
-      var SESSION_KEY = 'patient_session_id';
+      /* ========== 9. ID PASIEN ========== */
       function getPatientId() {
         try {
           var id = sessionStorage.getItem(SESSION_KEY);
@@ -917,15 +1081,19 @@
           return window.__fallbackId;
         }
       }
-      function getName() { var e = $('name'); return e ? e.value.trim() : ''; }
-      function getMR()   { var e = $('mr');   return e ? sanitizeMR(e.value) : ''; }
+      function getName() { return nameEl ? nameEl.value.trim() : ''; }
+      function getNIK()  { return nikEl  ? sanitizeNIK(nikEl.value) : ''; }
       function getPriority() { return DEFAULT_TIER; }
 
-      /* ========== 9. TRANSPORT + WATCH GEOLOKASI ========== */
+      /* ========== 10. TRANSPORT + WATCH GEOLOKASI ========== */
       var transport = null, watchId = null;
       var lastLat = null, lastLng = null, lastSent = 0;
       var SEND_EVERY_MS = 5000, MIN_MOVE_M = 10;
       var LS_LIVE_KEY = 'pasien_lokasi_live';
+
+      var hasArrived = false;
+      var firstPositionRecorded = false;
+      var startedOutsideHospital = false;
 
       function distanceMeters(lat1, lng1, lat2, lng2) {
         var R = 6371000, toRad = function (d) { return d * Math.PI / 180; };
@@ -972,7 +1140,7 @@
           type: 'location',
           id: getPatientId(),
           name: getName() || 'Pasien',
-          mr: getMR(),
+          nik: getNIK(),
           priority: getPriority(),
           lat: lat, lng: lng, accuracy: acc,
           heading: isFinite(Number(pos.coords.heading)) ? Number(pos.coords.heading) : null,
@@ -983,18 +1151,78 @@
         saveToLocalStorage(payload);
       }
 
+      function handleArrival(distM, pos) {
+        if (hasArrived) return;
+        hasArrived = true;
+
+        if (transport) {
+          try {
+            transport.send({
+              type: 'location-arrived',
+              id: getPatientId(),
+              name: getName(),
+              nik: getNIK(),
+              priority: getPriority(),
+              lat: pos ? Number(pos.coords.latitude)  : lastLat,
+              lng: pos ? Number(pos.coords.longitude) : lastLng,
+              distanceM: Math.round(distM),
+              hospital: HOSPITAL.name,
+              ts: Date.now()
+            });
+          } catch (e) {}
+        }
+
+        if (st) {
+          st.innerHTML = '✅ Anda sudah tiba di <b>' + HOSPITAL.name + '</b>.<br>Berbagi lokasi dihentikan otomatis.';
+        }
+
+        setTimeout(function () { stopSharing('arrived'); }, 150);
+
+        var acc = pos && isFinite(Number(pos.coords.accuracy))
+          ? Math.round(Number(pos.coords.accuracy)) : null;
+        var infoHtml =
+          '<b>Jarak ke RS:</b> ' + Math.round(distM) + ' m' +
+          (acc != null ? '<br><b>Akurasi GPS:</b> ±' + acc + ' m' : '') +
+          '<br><b>Waktu tiba:</b> ' + new Date().toLocaleTimeString('id-ID');
+
+        showArrivalModal(infoHtml);
+      }
+
       function onWatchSuccess(pos) {
         var lat = Number(pos.coords.latitude), lng = Number(pos.coords.longitude);
         var acc = Number(pos.coords.accuracy), now = Date.now();
         if (!isFinite(lat) || !isFinite(lng)) return;
+
+        if (!firstPositionRecorded) {
+          firstPositionRecorded = true;
+          var distFirst = distanceMeters(lat, lng, HOSPITAL.lat, HOSPITAL.lng);
+          startedOutsideHospital = distFirst > (HOSPITAL.arrivalRadiusM * 1.5);
+        }
+
+        if (isSharing && !hasArrived && startedOutsideHospital) {
+          var distNow = distanceMeters(lat, lng, HOSPITAL.lat, HOSPITAL.lng);
+          if (distNow <= HOSPITAL.arrivalRadiusM) {
+            lastLat = lat; lastLng = lng; lastSent = now;
+            sendLocation(pos);
+            handleArrival(distNow, pos);
+            return;
+          }
+        }
+
         var moved = (lastLat == null) ? Infinity : distanceMeters(lastLat, lastLng, lat, lng);
         if (moved > MIN_MOVE_M || (now - lastSent) > SEND_EVERY_MS) {
           lastLat = lat; lastLng = lng; lastSent = now;
           sendLocation(pos);
         }
-        if (st) {
+
+        if (st && !hasArrived) {
+          var distStr = '';
+          if (HOSPITAL.lat != null && HOSPITAL.lng != null) {
+            var d = distanceMeters(lat, lng, HOSPITAL.lat, HOSPITAL.lng);
+            distStr = ' • ' + (d < 1000 ? Math.round(d) + ' m' : (d/1000).toFixed(2) + ' km') + ' ke RS';
+          }
           st.textContent = 'Lokasi dibagikan — ' + lat.toFixed(5) + ', ' + lng.toFixed(5) +
-            (isFinite(acc) ? ' (±' + Math.round(acc) + ' m)' : '');
+            (isFinite(acc) ? ' (±' + Math.round(acc) + ' m)' : '') + distStr;
         }
       }
       function onWatchError(err) {
@@ -1005,7 +1233,7 @@
           case err.TIMEOUT: msg = '⚠ Waktu permintaan lokasi habis. Coba lagi.'; break;
         }
         if (st) st.textContent = msg;
-        if (err.code === err.PERMISSION_DENIED) stopSharing();
+        if (err.code === err.PERMISSION_DENIED) stopSharing('permission-denied');
       }
 
       function startSharing() {
@@ -1013,11 +1241,17 @@
           if (st) st.textContent = '⚠ Browser tidak mendukung Geolocation.';
           return;
         }
+        hasArrived = false;
+        firstPositionRecorded = false;
+        startedOutsideHospital = false;
         lastLat = null; lastLng = null; lastSent = 0;
+
         setSharing(true);
         if (st) st.textContent = 'Meminta izin lokasi…';
+
         navigator.geolocation.getCurrentPosition(onWatchSuccess, onWatchError,
           { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
+
         try {
           watchId = navigator.geolocation.watchPosition(onWatchSuccess, onWatchError,
             { enableHighAccuracy: true, timeout: 20000, maximumAge: 3000 });
@@ -1026,19 +1260,31 @@
         }
       }
 
-      function stopSharing() {
+      function stopSharing(reason) {
         if (watchId !== null) {
           try { navigator.geolocation.clearWatch(watchId); } catch (e) {}
           watchId = null;
         }
         var pid = getPatientId();
         if (transport) {
-          try { transport.send({ type: 'location-stop', id: pid, name: getName(), mr: getMR(), ts: Date.now() }); } catch (e) {}
+          try {
+            transport.send({
+              type: 'location-stop',
+              id: pid,
+              name: getName(),
+              nik: getNIK(),
+              reason: reason || 'manual',
+              ts: Date.now()
+            });
+          } catch (e) {}
         }
         removeFromLocalStorage(pid);
         lastLat = null; lastLng = null; lastSent = 0;
         setSharing(false);
-        if (st) st.textContent = 'Lokasi belum dibagikan.';
+
+        if (st && reason !== 'arrived' && reason !== 'permission-denied') {
+          st.textContent = 'Lokasi belum dibagikan.';
+        }
       }
 
       ready(function () {
@@ -1046,10 +1292,14 @@
         transport = createTransport(
           function (msg) {
             if (!msg || typeof msg !== 'object') return;
-            if (msg.type === 'stop-share' || msg.type === 'location-stop-force') stopSharing();
+            if (msg.type === 'stop-share' || msg.type === 'location-stop-force') {
+              stopSharing('server-request');
+            }
           },
           function (state) {
-            if (state === 'offline' && isSharing && st) st.textContent = 'Koneksi terputus, mencoba ulang…';
+            if (state === 'offline' && isSharing && st && !hasArrived) {
+              st.textContent = 'Koneksi terputus, mencoba ulang…';
+            }
           }
         );
       });
@@ -1060,42 +1310,65 @@
           try { navigator.geolocation.clearWatch(watchId); } catch (e) {}
           watchId = null;
         }
-        if (transport && isSharing) {
-          try { transport.send({ type: 'location-stop', id: getPatientId(), name: getName(), mr: getMR(), ts: Date.now() }); } catch (e) {}
+        if (transport && isSharing && !hasArrived) {
+          try {
+            transport.send({
+              type: 'location-stop',
+              id: getPatientId(),
+              name: getName(),
+              nik: getNIK(),
+              reason: 'unload',
+              ts: Date.now()
+            });
+          } catch (e) {}
         }
       });
 
+      /* ========== 11. TOMBOL UTAMA — 1 KLIK: SIMPAN + IZIN + INSERT + SHARE ========== */
       btn.addEventListener('click', function () {
-        if (isSharing) { stopSharing(); return; }
-        if (!getName()) {
-          alert('Isi nama pasien terlebih dahulu.');
-          var n = $('name'); if (n) n.focus();
-          return;
+        /* Jika sedang sharing → berhenti */
+        if (isSharing) { stopSharing('manual'); return; }
+
+        /* Jika form belum locked → validasi + auto-save */
+        if (!cardEl || !cardEl.classList.contains('form-locked')) {
+          if (!getName()) {
+            alert('Isi nama pasien terlebih dahulu.');
+            if (nameEl) nameEl.focus();
+            return;
+          }
+          if (!getNIK()) {
+            alert('Isi NIK pasien (hanya angka) terlebih dahulu.');
+            if (nikEl) nikEl.focus();
+            return;
+          }
+          if (getNIK().length !== 16) {
+            alert('NIK harus terdiri dari 16 digit angka.');
+            if (nikEl) nikEl.focus();
+            return;
+          }
+          /* Simpan identitas + lock form */
+          saveIdentity(getName(), getNIK());
+          setFormLocked(true);
         }
-        if (!getMR()) {
-          alert('Isi No. MR pasien (hanya angka) terlebih dahulu.');
-          if (mrEl) mrEl.focus();
-          return;
+
+        /* Kirim data pasien dulu (insert / upsert ke table) */
+        if (transport) {
+          try {
+            transport.send({
+              type: 'patient-info',
+              id: getPatientId(),
+              name: getName(),
+              nik: getNIK(),
+              priority: getPriority(),
+              ts: Date.now()
+            });
+          } catch (e) {}
         }
+        patchLiveEntry({ name: getName(), nik: getNIK() });
+
+        /* Mulai share → memicu izin lokasi + stream GPS */
         startSharing();
       });
-
-      function pushPatientInfo() {
-        if (!isSharing || !transport) return;
-        try {
-          transport.send({
-            type: 'patient-info',
-            id: getPatientId(),
-            name: getName(),
-            mr: getMR(),
-            priority: getPriority(),
-            ts: Date.now()
-          });
-        } catch (e) {}
-        patchLiveEntry({ name: getName(), mr: getMR() });
-      }
-      if (nameEl) nameEl.addEventListener('change', pushPatientInfo);
-      if (mrEl)   mrEl.addEventListener('change', pushPatientInfo);
 
     })();
   </script>

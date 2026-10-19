@@ -61,12 +61,13 @@
         <input type="text" id="schedName" placeholder="Contoh: Budi Santoso"
                autocomplete="name">
 
-        <!-- ▼▼▼ NO. MR — HANYA ANGKA ▼▼▼ -->
-        <label for="schedMR">No. MR (Rekam Medis)</label>
-        <input type="text" id="schedMR" placeholder="Contoh: 00123456"
+        <!-- ▼▼▼ NIK — HANYA ANGKA, MAX 16 DIGIT ▼▼▼ -->
+        <label for="schedNIK">NIK (Nomor Induk Kependudukan)</label>
+        <input type="text" id="schedNIK"
+               placeholder="16 digit, contoh: 3171234567890001"
                autocomplete="off" inputmode="numeric"
-               pattern="[0-9]*" maxlength="20">
-        <!-- ▲▲▲ /NO. MR ▲▲▲ -->
+               pattern="[0-9]*" maxlength="16">
+        <!-- ▲▲▲ /NIK ▲▲▲ -->
 
         <!-- ▼▼▼ Tingkat Prioritas (sinkron dengan patient.html) ▼▼▼ -->
         <label for="schedPriority">Tingkat Prioritas</label>
@@ -104,11 +105,11 @@
   <script>
   /* =====================================================================
    *  Jadwal Berobat — Logic (tanpa CSS / self-contained)
-   *  v5 — SINKRON dengan patient.html:
-   *       - Field `priority` (merah|kuning|biru)
-   *       - Field `mr` (No. Rekam Medis) → HANYA ANGKA (auto-sanitize)
-   *       - patient.html membaca item.priority via tierOf()
-   *       - guessPriority() hanya dipakai sebagai fallback data lama
+   *  v6 — SYNC dengan index.html & patient.html:
+   *       - Field `nik` (NIK 16 digit) — identik dengan sanitizeNIK() di index.html
+   *       - Field `priority` (merah|kuning|biru) — di-normalize oleh index.html
+   *       - Migrasi otomatis data lama: `mr` → `nik`
+   *       - Data siap di-cross-reference dengan patientData[id].nik
    * ===================================================================== */
   (function () {
     'use strict';
@@ -119,17 +120,21 @@
     var $ = function (id) { return document.getElementById(id); };
 
     /* -------------------------------------------------------------------
-     * 0. UTIL — sanitasi No. MR (hanya angka)
+     * 0. UTIL — sanitasi NIK (hanya angka, max 16 digit)
+     *    IDENTIK dengan sanitizeNIK() di index.html
      * ------------------------------------------------------------------- */
-    function sanitizeMR(v) {
-      return String(v == null ? '' : v).replace(/[^0-9]/g, '');
+    function sanitizeNIK(v) {
+      return String(v == null ? '' : v)
+        .replace(/[^0-9]/g, '')
+        .slice(0, 16);
     }
-    function bindMRInput(el) {
+
+    function bindNIKInput(el) {
       if (!el) return;
 
       /* Bersihkan tiap kali user mengetik */
       el.addEventListener('input', function () {
-        var cleaned = sanitizeMR(el.value);
+        var cleaned = sanitizeNIK(el.value);
         if (el.value !== cleaned) el.value = cleaned;
       });
 
@@ -140,13 +145,13 @@
         var pasted = cd.getData('text') || '';
         if (/[^0-9]/.test(pasted)) {
           e.preventDefault();
-          var cleaned = sanitizeMR(pasted);
+          var cleaned = sanitizeNIK(pasted);
           var start = el.selectionStart || 0;
           var end   = el.selectionEnd   || 0;
           var val   = el.value || '';
           var next  = val.slice(0, start) + cleaned + val.slice(end);
-          el.value = sanitizeMR(next);
-          var pos = start + cleaned.length;
+          el.value = sanitizeNIK(next);
+          var pos = Math.min(start + cleaned.length, 16);
           try { el.setSelectionRange(pos, pos); } catch (err) {}
           el.dispatchEvent(new Event('input', { bubbles: true }));
         }
@@ -166,8 +171,7 @@
      *   merah  → President Suite
      *   kuning → VVIP Suite
      *   biru   → VVIP  ← default
-     * Alias lama (president/vvip-suite/vvip/hijau) tetap didukung
-     * agar data tersimpan versi lama tidak rusak.
+     * Alias lama (president/vvip-suite/vvip/hijau) tetap didukung.
      * ------------------------------------------------------------------- */
     var PRIORITY_META = {
       'merah':      { cls: 'president',  label: 'President Suite', key: 'merah'  },
@@ -204,19 +208,40 @@
     var modal              = $('scheduleModal');
     if (!scheduleListEl || !modal) return;
 
-    /* Pasang filter angka ke input No. MR */
-    var mrInputEl = $('schedMR');
-    bindMRInput(mrInputEl);
+    /* Pasang filter angka ke input NIK */
+    var nikInputEl = $('schedNIK');
+    bindNIKInput(nikInputEl);
 
     /* Body lock */
     var lockCount = 0, savedOverflow = '';
     function lockBody()   { lockCount++; if (lockCount === 1) { savedOverflow = document.body.style.overflow || ''; document.body.style.overflow = 'hidden'; } }
     function unlockBody() { lockCount = Math.max(0, lockCount - 1); if (lockCount === 0) document.body.style.overflow = savedOverflow; }
 
-    /* Storage */
+    /* Storage — dengan migrasi mr → nik otomatis */
     function getSchedules() {
-      try { var raw = localStorage.getItem(STORAGE_KEY); var a = raw ? JSON.parse(raw) : []; return Array.isArray(a) ? a : []; }
-      catch (e) { return []; }
+      try {
+        var raw = localStorage.getItem(STORAGE_KEY);
+        var a = raw ? JSON.parse(raw) : [];
+        if (!Array.isArray(a)) return [];
+
+        /* Migrasi data lama: field `mr` → `nik` */
+        var needsSave = false;
+        a.forEach(function (item) {
+          if (!item || typeof item !== 'object') return;
+          if (item.mr != null && item.nik == null) {
+            item.nik = sanitizeNIK(item.mr);
+            delete item.mr;
+            needsSave = true;
+          } else if (item.nik != null) {
+            var cleaned = sanitizeNIK(item.nik);
+            if (cleaned !== item.nik) { item.nik = cleaned; needsSave = true; }
+          }
+        });
+        if (needsSave) {
+          try { localStorage.setItem(STORAGE_KEY, JSON.stringify(a)); } catch (e) {}
+        }
+        return a;
+      } catch (e) { return []; }
     }
     function saveSchedules(data) {
       try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
@@ -254,12 +279,13 @@
     function buildScheduleCard(item, idx) {
       var badge = getBadge(item.date);
       var prio  = getPriorityMeta(resolvePriority(item));
-      var mrVal = sanitizeMR(item.mr);   /* ← pastikan angka murni untuk tampilan */
+      var nikVal = sanitizeNIK(item.nik);   /* ← pastikan angka murni untuk tampilan */
 
       var li = document.createElement('li');
       li.className = 'schedule-card priority-' + prio.cls;
       li.dataset.idx = String(idx);
       li.dataset.priority = prio.key;
+      li.dataset.nik = nikVal;
 
       var head = document.createElement('div'); head.className = 'sc-head';
 
@@ -272,9 +298,9 @@
       var title = document.createElement('div'); title.className = 'sc-name';
       title.textContent = item.name || 'Pasien';
       var sub = document.createElement('div'); sub.className = 'sc-sub';
-      /* ✅ Tampilkan No. MR (angka saja) + label prioritas */
-      var mrText = mrVal ? ('No. MR: ' + mrVal + ' • ') : '';
-      sub.textContent = mrText + prio.label;
+      /* ✅ Tampilkan NIK (angka saja) + label prioritas */
+      var nikText = nikVal ? ('NIK: ' + nikVal + ' • ') : '';
+      sub.textContent = nikText + prio.label;
       titleWrap.appendChild(title); titleWrap.appendChild(sub);
 
       var badgeEl = document.createElement('span');
@@ -305,8 +331,8 @@
         row.appendChild(ic); row.appendChild(tx);
         return row;
       }
-      /* ✅ Baris No. MR di body kartu (angka saja) */
-      body.appendChild(makeInfo('id',    'No. MR',  mrVal || '-'));
+      /* ✅ Baris NIK di body kartu (angka saja) */
+      body.appendChild(makeInfo('id',    'NIK',     nikVal || '-'));
       body.appendChild(makeInfo('date',  'Tanggal', formatTanggal(item.date)));
       body.appendChild(makeInfo('time',  'Jam',     item.time  || '-'));
       body.appendChild(makeInfo('place', 'Tempat',  item.place || '-'));
@@ -394,8 +420,8 @@
                               String(t.getDate()).padStart(2, '0');
       $('schedTime').value  = '09:00';
       $('schedName').value  = '';
-      /* Reset No. MR */
-      if (mrInputEl) mrInputEl.value = '';
+      /* Reset NIK */
+      if (nikInputEl) nikInputEl.value = '';
       $('schedPlace').value = '';
       $('schedNote').value  = '';
       /* Reset prioritas ke default (VVIP / biru) */
@@ -413,10 +439,10 @@
     var saveBtn = $('saveSchedule');
     if (saveBtn) saveBtn.addEventListener('click', function () {
       var name  = $('schedName').value.trim();
-      /* ✅ Sanitasi No. MR → hanya angka */
-      var mr    = sanitizeMR(mrInputEl ? mrInputEl.value : '');
+      /* ✅ Sanitasi NIK → hanya angka, max 16 digit */
+      var nik   = sanitizeNIK(nikInputEl ? nikInputEl.value : '');
       /* Sinkronkan kembali ke input (jika user paste karakter aneh) */
-      if (mrInputEl && mrInputEl.value !== mr) mrInputEl.value = mr;
+      if (nikInputEl && nikInputEl.value !== nik) nikInputEl.value = nik;
 
       var date  = $('schedDate').value;
       var time  = $('schedTime').value;
@@ -427,7 +453,13 @@
       if (!PRIORITY_META[priority]) priority = DEFAULT_PRIORITY;
 
       if (!name)  { alert('Nama pasien wajib diisi.');     $('schedName').focus();  return; }
-      if (!mr)    { alert('No. MR wajib diisi (hanya angka).'); if (mrInputEl) mrInputEl.focus(); return; }
+      if (!nik)   { alert('NIK wajib diisi (hanya angka).'); if (nikInputEl) nikInputEl.focus(); return; }
+      if (nik.length !== 16) {
+        var ok = confirm('NIK yang Anda masukkan ' + nik.length + ' digit.\n' +
+                         'NIK standar Indonesia terdiri dari 16 digit.\n\n' +
+                         'Tetap simpan dengan NIK ini?');
+        if (!ok) { if (nikInputEl) nikInputEl.focus(); return; }
+      }
       if (!date)  { alert('Tanggal berobat wajib diisi.'); $('schedDate').focus();  return; }
       if (!place) { alert('Tempat / poli wajib diisi.');   $('schedPlace').focus(); return; }
 
@@ -435,7 +467,7 @@
       data.push({
         id: Date.now(),
         name: name,
-        mr: mr,                 /* ← No. Rekam Medis (angka murni) */
+        nik: nik,               /* ← NIK (16 digit, angka murni) — sync dengan patientData[id].nik */
         priority: priority,     /* ← sinkron dengan patient.html (tierOf) */
         date: date,
         time: time,
@@ -454,11 +486,12 @@
       open:   openModal,
       close:  closeModal,
       get:    getSchedules,
-      /* util untuk modul lain (mis. patient.html) */
+      /* util untuk modul lain (mis. patient.html / index.html) */
       priorityMeta: getPriorityMeta,
       resolvePriority: resolvePriority,
       DEFAULT_PRIORITY: DEFAULT_PRIORITY,
-      sanitizeMR: sanitizeMR
+      sanitizeNIK: sanitizeNIK,   /* ← sync dengan sanitizeNIK() di index.html */
+      STORAGE_KEY: STORAGE_KEY
     };
   })();
   </script>

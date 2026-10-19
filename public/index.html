@@ -3,14 +3,13 @@
   ===================================================================
   index.html — Monitoring Pasien Prioritas — RS Pelabuhan Jakarta
   ===================================================================
-  • Peta: Leaflet + tile Geoapify (dari config.php)
-  • Peta dibuat SEKALI di sini → window.map
-  • Semua logika marker/list/animation ada di inline script di bawah
-  • dashboard.js TIDAK dipakai (menghindari konflik ganda)
+  • Peta utama: Leaflet + tile Geoapify (dari config.php)
+  • KLIK NAMA USER → MODAL PETA TERSENDIRI (per-user, TIDAK digabung)
+  • IDENTITAS PASIEN: name + NIK (16 digit)
+  • TOMBOL WHATSAPP (💬 Whatsapp) di setiap item
   • FITUR HAPUS RIWAYAT:
-      - #clearHistoryBtn  → hapus SEMUA riwayat pasien prioritas
-      - .del (per item)   → hapus 1 pasien dari daftar + localStorage
-                            (tombol pill "Hapus", bukan ikon ✕ lagi)
+      - #clearHistoryBtn  → hapus SEMUA riwayat
+      - Tombol Delete per-item DIHAPUS (hanya clear all)
   ===================================================================
 -->
 <html lang="id">
@@ -31,7 +30,7 @@
     .pin.moving .pulse { animation-duration: 0.9s; }
 
     /* ============================================================
-       HEADER — perbaikan layout logo & penamaan
+       HEADER
        ============================================================ */
     header.bar {
       display: flex;
@@ -42,7 +41,6 @@
       min-height: 62px;
       box-sizing: border-box;
     }
-
     header.bar .bar-brand {
       display: flex;
       align-items: center;
@@ -50,8 +48,6 @@
       min-width: 0;
       flex: 1 1 auto;
     }
-
-    /* Kotak putih pembungkus logo — supaya logo IHC tetap proporsional */
     header.bar .brand-logo-wrap {
       flex: 0 0 auto;
       display: inline-flex;
@@ -64,8 +60,6 @@
       box-sizing: border-box;
       box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
     }
-
-    /* Logo: biarkan tinggi yang mengatur, lebar otomatis (tidak gepeng) */
     header.bar .brand-logo {
       display: block;
       height: 34px;
@@ -73,7 +67,6 @@
       max-width: 132px;
       object-fit: contain;
     }
-
     header.bar .bar-brand-text {
       min-width: 0;
       overflow: hidden;
@@ -81,7 +74,6 @@
       flex-direction: column;
       justify-content: center;
     }
-
     header.bar .bar-brand-text h1 {
       margin: 0;
       font-size: 15px;
@@ -93,7 +85,6 @@
       overflow: hidden;
       text-overflow: ellipsis;
     }
-
     header.bar .bar-brand-text .bar-subtitle {
       margin: 2px 0 0;
       font-size: 11px;
@@ -104,14 +95,11 @@
       overflow: hidden;
       text-overflow: ellipsis;
     }
-
     header.bar .bar-right {
       flex: 0 0 auto;
       display: flex;
       align-items: center;
     }
-
-    /* Responsif untuk layar kecil */
     @media (max-width: 420px) {
       header.bar { padding: 6px 10px; min-height: 56px; gap: 8px; }
       header.bar .brand-logo-wrap { height: 38px; padding: 3px 6px; border-radius: 8px; }
@@ -119,7 +107,6 @@
       header.bar .bar-brand-text h1 { font-size: 13px; }
       header.bar .bar-brand-text .bar-subtitle { font-size: 10px; }
     }
-
     @media (max-width: 340px) {
       header.bar .bar-brand-text .bar-subtitle { display: none; }
     }
@@ -127,16 +114,12 @@
     /* ============================================================
        TOMBOL HAPUS RIWAYAT (GLOBAL)
        ============================================================ */
-
-    /* Baris judul panel samping — dibuat flex agar tombol bisa ke kanan */
     .sheet-title {
       display: flex;
       align-items: center;
       gap: 8px;
       flex-wrap: nowrap;
     }
-
-    /* Tombol global: hapus SEMUA riwayat */
     .sheet-title #clearHistoryBtn.clear-history-btn {
       margin-left: auto;
       flex: 0 0 auto;
@@ -168,11 +151,10 @@
     }
 
     /* ============================================================
-       ITEM LIST — layout rapi: nama (kiri) · tag+Hapus (kanan)
+       ITEM LIST
        ============================================================ */
     #list .item { position: relative; }
 
-    /* Baris atas tiap item: pastikan benar-benar flex sejajar */
     #list .item .item-top {
       display: flex !important;
       align-items: center !important;
@@ -181,22 +163,41 @@
       width: 100% !important;
       min-width: 0;
     }
-
-    /* Blok nama + meta: boleh menyusut, tidak boleh melampaui */
     #list .item .item-top > div:first-child {
       min-width: 0;
       flex: 1 1 auto;
       overflow: hidden;
     }
     #list .item .item-top > div:first-child strong,
+    #list .item .item-top > div:first-child .item-nik,
     #list .item .item-top > div:first-child .item-meta {
       display: block;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
     }
-
-    /* Grup kanan: tag prioritas + tombol hapus */
+    #list .item .item-nik {
+      font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Roboto Mono", monospace;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.4px;
+      color: #1B5FAA;
+      margin-top: 2px;
+    }
+    #list .item .item-nik .item-nik-label {
+      display: inline-block;
+      font-family: inherit;
+      font-size: 9.5px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      background: #1B5FAA;
+      color: #fff;
+      padding: 1px 6px;
+      border-radius: 999px;
+      margin-right: 5px;
+      vertical-align: middle;
+    }
     #list .item .item-actions {
       display: inline-flex;
       align-items: center;
@@ -205,16 +206,16 @@
       margin-left: auto;
     }
 
-    /* Tombol hapus per item — pill button bertuliskan "Hapus" */
-    #list .item .item-actions .del {
+    /* ─── TOMBOL WHATSAPP (per item) ─── */
+    #list .item .item-actions .wa-btn {
       flex: 0 0 auto;
-      height: 24px;
-      padding: 0 10px;
+      height: 26px;
+      padding: 0 12px;
       border: none;
       border-radius: 999px;
-      background: #E11D48;
+      background: #25D366;
       color: #ffffff;
-      font-size: 11px;
+      font-size: 11.5px;
       font-weight: 700;
       letter-spacing: 0.3px;
       line-height: 1;
@@ -225,20 +226,229 @@
       gap: 4px;
       transition: background .18s ease, transform .12s ease, box-shadow .18s ease;
       -webkit-tap-highlight-color: transparent;
-      box-shadow: 0 1px 3px rgba(225, 29, 72, 0.35);
+      box-shadow: 0 1px 3px rgba(37, 211, 102, 0.4);
       white-space: nowrap;
     }
-    #list .item .item-actions .del::before {
-      content: "🗑";
+    #list .item .item-actions .wa-btn::before {
+      content: "💬";
       font-size: 11px;
       line-height: 1;
     }
-    #list .item .item-actions .del:hover {
-      background: #BE123C;
-    }
-    #list .item .item-actions .del:active {
+    #list .item .item-actions .wa-btn:hover { background: #1DA851; }
+    #list .item .item-actions .wa-btn:active {
       transform: scale(0.94);
-      box-shadow: 0 1px 2px rgba(225, 29, 72, 0.35);
+      box-shadow: 0 1px 2px rgba(37, 211, 102, 0.4);
+    }
+
+    #list .item.is-clickable { cursor: pointer; }
+
+    /* ============================================================
+       MODAL PETA PER-USER (TERSENDIRI)
+       ============================================================ */
+    .user-map-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.58);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      display: none;
+      align-items: flex-end;
+      justify-content: center;
+      z-index: 12000;
+      animation: umaFade .2s ease;
+      overscroll-behavior: contain;
+    }
+    .user-map-overlay.show { display: flex; }
+    @keyframes umaFade { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes umaSlideUp {
+      from { transform: translateY(100%); }
+      to   { transform: translateY(0); }
+    }
+
+    .user-map-box {
+      background: #fff;
+      width: 100%;
+      max-width: 100%;
+      border-radius: 20px 20px 0 0;
+      box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.28);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      max-height: 92vh;
+      max-height: 92dvh;
+      animation: umaSlideUp 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .user-map-head {
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 14px;
+      background: linear-gradient(135deg, #144A87, #1B5FAA);
+      color: #fff;
+    }
+    .user-map-head-text {
+      min-width: 0;
+      flex: 1 1 auto;
+      overflow: hidden;
+    }
+    .user-map-head h3 {
+      margin: 0;
+      font-size: 15px;
+      font-weight: 800;
+      line-height: 1.2;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .user-map-head p {
+      margin: 2px 0 0;
+      font-size: 11.5px;
+      font-weight: 500;
+      color: rgba(255, 255, 255, 0.88);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-family: ui-monospace, Menlo, Consolas, monospace;
+      letter-spacing: .3px;
+    }
+    .user-map-head p .uma-tag {
+      display: inline-block;
+      font-family: inherit;
+      background: rgba(255, 255, 255, 0.22);
+      border: 1px solid rgba(255, 255, 255, 0.35);
+      padding: 1px 7px;
+      border-radius: 999px;
+      font-weight: 800;
+      letter-spacing: .4px;
+      margin-left: 6px;
+      font-size: 10.5px;
+    }
+    .user-map-close {
+      flex: 0 0 auto;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: none;
+      background: rgba(255, 255, 255, 0.2);
+      color: #fff;
+      font-size: 16px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background .15s ease, transform .1s ease;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .user-map-close:hover { background: rgba(255, 255, 255, 0.34); }
+    .user-map-close:active { transform: scale(0.9); }
+
+    .user-map-canvas {
+      flex: 1 1 auto;
+      min-height: 260px;
+      height: 46vh;
+      height: 46dvh;
+      background: #eef3f9;
+      position: relative;
+    }
+    .user-map-canvas .leaflet-container {
+      width: 100%;
+      height: 100%;
+      background: #eef3f9;
+    }
+
+    .user-map-foot {
+      flex-shrink: 0;
+      padding: 10px 14px calc(12px + env(safe-area-inset-bottom, 0px));
+      border-top: 1px solid #eef0f3;
+      background: #fff;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-height: 30vh;
+      overflow-y: auto;
+    }
+    .user-map-meta {
+      font-size: 12px;
+      color: #333;
+      line-height: 1.55;
+      font-family: ui-monospace, Menlo, Consolas, monospace;
+      letter-spacing: .2px;
+    }
+    .user-map-meta b { color: #1B5FAA; }
+
+    .user-map-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .user-map-btn {
+      flex: 1 1 auto;
+      min-width: 120px;
+      min-height: 44px;
+      padding: 10px 14px;
+      border-radius: 12px;
+      border: none;
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      text-decoration: none;
+      text-align: center;
+      transition: background .15s ease, transform .1s ease, box-shadow .15s ease;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .user-map-btn:active { transform: scale(0.97); }
+    .user-map-btn.primary {
+      background: #1B5FAA;
+      color: #fff;
+      box-shadow: 0 2px 6px rgba(27, 95, 170, 0.28);
+    }
+    .user-map-btn.primary:hover { background: #144A87; }
+    .user-map-btn.ghost {
+      background: #f2f4f7;
+      color: #333;
+    }
+    .user-map-btn.ghost:hover { background: #e6e9ee; }
+
+    /* ─── TOMBOL WA DI MODAL ─── */
+    .user-map-btn.wa {
+      background: #25D366;
+      color: #fff;
+      box-shadow: 0 2px 6px rgba(37, 211, 102, 0.32);
+    }
+    .user-map-btn.wa:hover { background: #1DA851; }
+
+    @media (min-width: 640px) {
+      .user-map-overlay { align-items: center; padding: 24px; }
+      .user-map-box {
+        border-radius: 18px;
+        max-width: 720px;
+        max-height: 88vh;
+        animation: umaPop .26s cubic-bezier(.32,.72,0,1);
+      }
+      @keyframes umaPop {
+        from { transform: scale(.94); opacity: 0; }
+        to   { transform: scale(1);   opacity: 1; }
+      }
+      .user-map-canvas { height: 52vh; height: 52dvh; }
+      .user-map-actions { flex-wrap: nowrap; }
+      .user-map-btn { flex: 1 1 auto; min-width: auto; }
+    }
+
+    @keyframes umaPulse {
+      0%   { transform: scale(.6); opacity: .55; }
+      100% { transform: scale(1.6); opacity: 0; }
+    }
+
+    .user-map-foot::-webkit-scrollbar { width: 6px; }
+    .user-map-foot::-webkit-scrollbar-thumb {
+      background: rgba(27,95,170,.25); border-radius: 3px;
     }
   </style>
 </head>
@@ -294,7 +504,6 @@
       <div class="sheet-title">
         <b>Pasien Prioritas</b>
         <span id="liveTag">● LIVE</span>
-        <!-- TOMBOL HAPUS SEMUA RIWAYAT -->
         <button
           id="clearHistoryBtn"
           class="clear-history-btn"
@@ -306,27 +515,54 @@
       <p id="summary" class="summary">Belum ada pasien yang membagikan lokasi.</p>
       <ul id="list" class="list"></ul>
 
-      <!-- Status koneksi (dipakai inline script) -->
       <div id="connStatus" class="conn" aria-live="polite"></div>
 
-      <!-- Slot untuk modul Jadwal Berobat (di-inject otomatis) -->
       <!-- #JADWAL_BEROBAT_SLOT# -->
     </aside>
   </main>
 
-  <!-- Slot modal Jadwal Berobat -->
   <!-- #JADWAL_BEROBAT_MODAL_SLOT# -->
 
   <!-- ============================================================
-       LOAD LIBRARY + CONFIG (urutan wajib: Leaflet → CONFIG → transport)
+       MODAL PETA PER-USER (TERSENDIRI) — LIVE TRACKING
+       ============================================================ -->
+  <div class="user-map-overlay" id="userMapOverlay" role="dialog" aria-modal="true"
+       aria-labelledby="userMapTitle" aria-describedby="userMapMeta">
+    <div class="user-map-box" id="userMapBox">
+      <div class="user-map-head">
+        <div class="user-map-head-text">
+          <h3 id="userMapTitle">Pasien</h3>
+          <p id="userMapSubtitle">—</p>
+        </div>
+        <button type="button" class="user-map-close" id="userMapClose" aria-label="Tutup peta">✕</button>
+      </div>
+      <div class="user-map-canvas" id="userMapCanvas" aria-label="Peta lokasi pasien"></div>
+      <div class="user-map-foot">
+        <div class="user-map-meta" id="userMapMeta">—</div>
+        <div class="user-map-actions">
+          <a class="user-map-btn wa" id="userMapWA" href="#" target="_blank" rel="noopener">
+            <span aria-hidden="true">💬</span><span>Whatsapp</span>
+          </a>
+          <a class="user-map-btn primary" id="userMapGmaps" href="#" target="_blank" rel="noopener">
+            <span aria-hidden="true">🚗</span><span>Rute</span>
+          </a>
+          <button type="button" class="user-map-btn ghost" id="userMapFocusMain">
+            <span aria-hidden="true">🎯</span><span>Peta Utama</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       LOAD LIBRARY + CONFIG
        ============================================================ -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
   <script src="../config.php"></script>
   <script src="../js/transport.js"></script>
 
   <!-- ============================================================
-       INISIALISASI PETA — Leaflet + tile Geoapify dari CONFIG
-       WAJIB ada di sini, SEBELUM inline script di bawah
+       INISIALISASI PETA UTAMA
        ============================================================ -->
   <script>
     (function () {
@@ -341,6 +577,12 @@
 
       var tileAttr = cfg.TILE_ATTRIBUTION
         || '&copy; OpenStreetMap contributors &copy; Geoapify';
+
+      window.__TILE_CFG__ = {
+        url: tileUrl,
+        attribution: tileAttr,
+        maxZoom: 20
+      };
 
       window.map = L.map('map', { zoomControl: false })
                     .setView([center.lat, center.lng], zoom);
@@ -370,7 +612,7 @@
   </script>
 
   <!-- ============================================================
-       LOGIKA APLIKASI (marker, list, animasi, transport)
+       LOGIKA APLIKASI
        ============================================================ -->
   <script>
     (function () {
@@ -398,6 +640,140 @@
       var side = $('sidePanel');
 
       /* =========================================================
+         1b. UTIL NIK / HTML
+         ========================================================= */
+      function sanitizeNIK(v) {
+        return String(v == null ? '' : v).replace(/[^0-9]/g, '').slice(0, 16);
+      }
+      function escapeHtml(s) {
+        return String(s == null ? '' : s)
+          .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+      }
+
+      /* =========================================================
+         1c. KONFIG WHATSAPP
+         ========================================================= */
+      var WA_CONFIG = (function () {
+        var cfg = window.CONFIG || {};
+        var adminNum = (cfg.WHATSAPP_ADMIN
+                     || (cfg.HOSPITAL && (cfg.HOSPITAL.whatsapp || cfg.HOSPITAL.whatsappE164))
+                     || '6281234567890'); /* ← GANTI dengan nomor WA petugas RSPJ */
+        adminNum = String(adminNum).replace(/[^0-9]/g, '');
+        if (adminNum.indexOf('0') === 0) adminNum = '62' + adminNum.slice(1);
+        if (adminNum.indexOf('62') !== 0) adminNum = '62' + adminNum;
+
+        return {
+          adminNumber: adminNum,
+          hospitalName: (cfg.HOSPITAL && cfg.HOSPITAL.name) || 'RS Pelabuhan Jakarta'
+        };
+      })();
+
+      function buildWALink(patient, opts) {
+        opts = opts || {};
+        var phone = null;
+        if (patient && patient.phone) {
+          phone = String(patient.phone).replace(/[^0-9]/g, '');
+          if (phone.indexOf('0') === 0) phone = '62' + phone.slice(1);
+          if (phone.indexOf('62') !== 0) phone = '62' + phone;
+        }
+
+        var target = phone || WA_CONFIG.adminNumber;
+        var msg = (opts.toPatient && phone)
+          ? buildWAMessageToPatient(patient)
+          : buildWAMessageToAdmin(patient);
+
+        return 'https://wa.me/' + target + '?text=' + encodeURIComponent(msg);
+      }
+
+      function buildWAMessageToPatient(p) {
+        var name = (p && p.name) || 'Bapak/Ibu';
+        var nik  = (p && p.nik)  ? sanitizeNIK(p.nik) : '';
+        var lat  = p && p.lat != null ? Number(p.lat) : null;
+        var lng  = p && p.lng != null ? Number(p.lng) : null;
+
+        var jarakStr = '', etaStr = '';
+        if (lat != null && lng != null && HOSPITAL_COORD) {
+          var d = haversineMeters(lat, lng, HOSPITAL_COORD.lat, HOSPITAL_COORD.lng);
+          jarakStr = fmtDistance(d);
+          var spd = (p.speed != null && p.speed > 0.5) ? p.speed : 1.4;
+          etaStr = fmtEta(d / spd);
+        }
+
+        var lines = [];
+        lines.push('Halo *' + name + '*,');
+        lines.push('');
+        lines.push('Kami dari *' + WA_CONFIG.hospitalName + '*.');
+        lines.push('Kami melihat Anda sedang dalam perjalanan menuju rumah sakit.');
+        lines.push('');
+        if (jarakStr) lines.push('🎯 Jarak ke RS: *' + jarakStr + '*');
+        if (etaStr)   lines.push('⏱️ Perkiraan tiba: *' + etaStr + '*');
+        if (lat != null && lng != null) {
+          lines.push('');
+          lines.push('📍 Posisi Anda saat ini:');
+          lines.push('https://maps.google.com/?q=' + lat + ',' + lng);
+        }
+        if (nik) {
+          lines.push('');
+          lines.push('_(Ref: NIK ' + nik + ')_');
+        }
+        lines.push('');
+        lines.push('Mohon berkendara dengan aman. Petugas kami akan menyambut Anda di lobi penerimaan.');
+        lines.push('');
+        lines.push('Terima kasih 🙏');
+        return lines.join('\n');
+      }
+
+      function buildWAMessageToAdmin(p) {
+        var name = (p && p.name) || 'Pasien';
+        var nik  = (p && p.nik) ? sanitizeNIK(p.nik) : '-';
+        var prioLabel = getPriorityMeta(normalizePriority(p && p.priority)).label;
+        var lat  = p && p.lat != null ? Number(p.lat) : null;
+        var lng  = p && p.lng != null ? Number(p.lng) : null;
+
+        var jarakStr = '—', etaStr = '—';
+        if (lat != null && lng != null && HOSPITAL_COORD) {
+          var d = haversineMeters(lat, lng, HOSPITAL_COORD.lat, HOSPITAL_COORD.lng);
+          jarakStr = fmtDistance(d);
+          var spd = (p.speed != null && p.speed > 0.5) ? p.speed : 1.4;
+          etaStr = fmtEta(d / spd);
+        }
+
+        var status = journeyStatus(p && p.speed, (lat != null && lng != null && HOSPITAL_COORD)
+          ? haversineMeters(lat, lng, HOSPITAL_COORD.lat, HOSPITAL_COORD.lng)
+          : null);
+
+        var waktu = '';
+        if (p && p.ts) {
+          try { waktu = new Date(p.ts).toLocaleString('id-ID'); } catch (e) {}
+        }
+
+        var lines = [];
+        lines.push('🚨 *Notifikasi Pasien Prioritas*');
+        lines.push('');
+        lines.push('*Nama*   : ' + name);
+        lines.push('*NIK*    : ' + nik);
+        lines.push('*Kelas*  : ' + prioLabel);
+        lines.push('');
+        if (status && status.text) lines.push('*Status* : ' + status.text);
+
+        if (lat != null && lng != null) {
+          lines.push('');
+          lines.push('📍 *Posisi saat ini*:');
+          lines.push('https://maps.google.com/?q=' + lat + ',' + lng);
+          lines.push('_(Lat ' + lat.toFixed(6) + ', Lng ' + lng.toFixed(6) + ')_');
+        }
+
+        lines.push('');
+        lines.push('🎯 *Jarak ke RS* : ' + jarakStr);
+        lines.push('⏱️ *ETA*          : ' + etaStr);
+        if (waktu) lines.push('🕐 *Update*       : ' + waktu);
+        lines.push('');
+        lines.push('Mohon dipersiapkan penerimaannya di lobi / area terkait.');
+        return lines.join('\n');
+      }
+
+      /* =========================================================
          2. VIEWPORT FIX — Android
          ========================================================= */
       if (isAndroid) {
@@ -407,7 +783,6 @@
         setVH();
         window.addEventListener('resize', setVH);
         window.addEventListener('orientationchange', function () { setTimeout(setVH, 200); });
-
         if (window.visualViewport) {
           window.visualViewport.addEventListener('resize', function () {
             if (window.visualViewport.height < window.innerHeight * 0.75) {
@@ -420,7 +795,7 @@
       }
 
       /* =========================================================
-         3. MAP + SHEET
+         3. MAP + SHEET (peta utama)
          ========================================================= */
       function fixMap(ms) {
         if (window.map && typeof window.map.invalidateSize === 'function') {
@@ -469,7 +844,6 @@
           document.body.style.overflow = 'hidden';
         }
       }
-
       function unlockBody() {
         lockCount = Math.max(0, lockCount - 1);
         if (lockCount > 0) return;
@@ -506,9 +880,63 @@
         if (PRIORITY_META[p]) return p;
         return DEFAULT_PRIORITY;
       }
-
       function getPriorityMeta(p) {
         return PRIORITY_META[p] || PRIORITY_META[DEFAULT_PRIORITY];
+      }
+
+      /* =========================================================
+         5b. KONFIG RS
+         ========================================================= */
+      var HOSPITAL_COORD = null;
+      (function () {
+        var cfg = window.CONFIG || {};
+        var h = cfg.HOSPITAL;
+        if (h && h.lat != null && h.lng != null) {
+          HOSPITAL_COORD = {
+            lat: Number(h.lat),
+            lng: Number(h.lng),
+            name: h.name || 'RS Pelabuhan Jakarta'
+          };
+        } else {
+          HOSPITAL_COORD = {
+            lat: -6.125022,
+            lng: 106.917765,
+            name: 'RS Pelabuhan Jakarta'
+          };
+        }
+      })();
+
+      function haversineMeters(lat1, lng1, lat2, lng2) {
+        var R = 6371000, toRad = function (d) { return d * Math.PI / 180; };
+        var dLat = toRad(lat2 - lat1), dLng = toRad(lng2 - lng1);
+        var a = Math.sin(dLat/2)*Math.sin(dLat/2) +
+                Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*
+                Math.sin(dLng/2)*Math.sin(dLng/2);
+        return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      }
+      function fmtDistance(m) {
+        if (!isFinite(m)) return '—';
+        if (m < 1000) return Math.round(m) + ' m';
+        return (m / 1000).toFixed(2) + ' km';
+      }
+      function fmtEta(seconds) {
+        if (!isFinite(seconds) || seconds <= 0) return '—';
+        var m = Math.round(seconds / 60);
+        if (m < 1) return '< 1 menit';
+        if (m < 60) return m + ' menit';
+        var h = Math.floor(m / 60), r = m % 60;
+        return h + ' jam' + (r ? ' ' + r + ' menit' : '');
+      }
+      function journeyStatus(speed, distanceToHosp) {
+        if (distanceToHosp != null && distanceToHosp < 60) {
+          return { text: '🏥 Sudah tiba di RS', color: '#16A34A' };
+        }
+        if (speed == null || !isFinite(speed)) return { text: '📡 Memantau…', color: '#1B5FAA' };
+        if (speed < 0.5) return { text: '⏸️ Berhenti / diam', color: '#F59E0B' };
+        if (speed < 1.4) return { text: '🚶 Berjalan kaki', color: '#0EA5E9' };
+        if (speed < 6)   return { text: '🚗 Berkendara lambat', color: '#0EA5E9' };
+        if (speed < 25)  return { text: '🚗 Dalam perjalanan', color: '#16A34A' };
+        return { text: '🚀 Melaju cepat', color: '#16A34A' };
       }
 
       /* =========================================================
@@ -519,7 +947,6 @@
           if (typeof onDone === 'function') onDone();
           return;
         }
-
         var start    = marker.getLatLng();
         var startLat = start.lat, startLng = start.lng;
         var endLat   = Number(newLat), endLng = Number(newLng);
@@ -527,25 +954,17 @@
           if (typeof onDone === 'function') onDone();
           return;
         }
-
         var dist = Math.hypot(endLat - startLat, endLng - startLng);
         if (dist < 1e-5) {
           marker.setLatLng([endLat, endLng]);
           if (typeof onDone === 'function') onDone();
           return;
         }
-
         var dur = typeof durationMs === 'number' ? durationMs : 900;
         var t0  = performance.now();
 
-        if (marker.__animFrame) {
-          cancelAnimationFrame(marker.__animFrame);
-          marker.__animFrame = null;
-        }
-        if (marker.__animDone) {
-          try { marker.__animDone(); } catch (e) {}
-          marker.__animDone = null;
-        }
+        if (marker.__animFrame) { cancelAnimationFrame(marker.__animFrame); marker.__animFrame = null; }
+        if (marker.__animDone)  { try { marker.__animDone(); } catch (e) {} marker.__animDone = null; }
 
         var el = marker.getElement && marker.getElement();
         if (el) el.classList.add('moving');
@@ -556,7 +975,6 @@
           var lat = startLat + (endLat - startLat) * e;
           var lng = startLng + (endLng - startLng) * e;
           marker.setLatLng([lat, lng]);
-
           if (t < 1) {
             marker.__animFrame = requestAnimationFrame(step);
           } else {
@@ -592,7 +1010,7 @@
             var name = (nm ? nm.textContent : first.textContent).trim().split('\n')[0];
             var t = $('locText1');
             if (t && name && t.textContent.indexOf(name) === -1) {
-              t.innerHTML = 'Lokasi ' + name.replace(/</g, '&lt;') + '<small>Membagikan lokasi langsung</small>';
+              t.innerHTML = 'Lokasi ' + escapeHtml(name) + '<small>Membagikan lokasi langsung</small>';
             }
           }
           if (typeof updateClearHistoryBtn === 'function') updateClearHistoryBtn();
@@ -613,117 +1031,69 @@
         myLocInfo.innerHTML = html;
         myLocInfo.classList.add('show');
       }
-
       function onGeoSuccess(pos) {
-        var lat   = pos.coords.latitude;
-        var lng   = pos.coords.longitude;
-        var acc   = pos.coords.accuracy;
-        var ts    = new Date(pos.timestamp).toLocaleTimeString('id-ID');
-
+        var lat = pos.coords.latitude, lng = pos.coords.longitude, acc = pos.coords.accuracy;
+        var ts = new Date(pos.timestamp).toLocaleTimeString('id-ID');
         showLocInfo(
           '<b>Lokasi terdeteksi</b><br>' +
-          '<span class="coord">Lat: ' + lat.toFixed(6) + '<br>' +
-          'Lng: ' + lng.toFixed(6) + '</span><br>' +
-          'Akurasi: ±' + Math.round(acc) + ' m<br>' +
-          '<small>Diperbarui: ' + ts + '</small>'
+          '<span class="coord">Lat: ' + lat.toFixed(6) + '<br>Lng: ' + lng.toFixed(6) + '</span><br>' +
+          'Akurasi: ±' + Math.round(acc) + ' m<br><small>Diperbarui: ' + ts + '</small>'
         );
-
-        if (myLocBtn) {
-          myLocBtn.disabled = false;
-          myLocBtn.innerHTML = '📍 Perbarui Lokasi';
-        }
-
+        if (myLocBtn) { myLocBtn.disabled = false; myLocBtn.innerHTML = '📍 Perbarui Lokasi'; }
         if (window.map && window.L) {
-          if (myMarker) {
-            myMarker.setLatLng([lat, lng]);
-          } else {
+          if (myMarker) myMarker.setLatLng([lat, lng]);
+          else {
             myMarker = L.marker([lat, lng], {
               title: 'Lokasi Saya',
               icon: L.divIcon({
                 className: 'my-loc-marker',
                 html: '<div style="background:#92C83E;width:18px;height:18px;border:3px solid #fff;border-radius:50%;box-shadow:0 0 0 2px #92C83E,0 2px 6px rgba(0,0,0,.35);"></div>',
-                iconSize: [18, 18],
-                iconAnchor: [9, 9]
+                iconSize: [18, 18], iconAnchor: [9, 9]
               })
             }).addTo(window.map);
-            myMarker.bindPopup('<b>Lokasi Saya</b><br>' +
-              lat.toFixed(6) + ', ' + lng.toFixed(6));
+            myMarker.bindPopup('<b>Lokasi Saya</b><br>' + lat.toFixed(6) + ', ' + lng.toFixed(6));
           }
-
-          if (myCircle) {
-            myCircle.setLatLng([lat, lng]).setRadius(acc);
-          } else {
+          if (myCircle) myCircle.setLatLng([lat, lng]).setRadius(acc);
+          else {
             myCircle = L.circle([lat, lng], {
-              radius: acc,
-              color: '#92C83E',
-              fillColor: '#92C83E',
-              fillOpacity: 0.12,
-              weight: 1
+              radius: acc, color: '#92C83E', fillColor: '#92C83E', fillOpacity: 0.12, weight: 1
             }).addTo(window.map);
           }
-
           window.map.setView([lat, lng], Math.max(window.map.getZoom(), 16));
         }
       }
-
       function onGeoError(err) {
         var msg = 'Lokasi tidak dapat diambil.';
         switch (err.code) {
-          case err.PERMISSION_DENIED:
-            msg = 'Izin lokasi ditolak. Aktifkan izin lokasi di pengaturan browser.';
-            break;
-          case err.POSITION_UNAVAILABLE:
-            msg = 'Informasi lokasi tidak tersedia.';
-            break;
-          case err.TIMEOUT:
-            msg = 'Permintaan lokasi habis waktu. Coba lagi.';
-            break;
+          case err.PERMISSION_DENIED: msg = 'Izin lokasi ditolak. Aktifkan izin lokasi di pengaturan browser.'; break;
+          case err.POSITION_UNAVAILABLE: msg = 'Informasi lokasi tidak tersedia.'; break;
+          case err.TIMEOUT: msg = 'Permintaan lokasi habis waktu. Coba lagi.'; break;
         }
         showLocInfo('<span class="err">⚠ ' + msg + '</span>');
-        if (myLocBtn) {
-          myLocBtn.disabled = false;
-          myLocBtn.innerHTML = '📍 Lokasi Saya';
-        }
+        if (myLocBtn) { myLocBtn.disabled = false; myLocBtn.innerHTML = '📍 Lokasi Saya'; }
       }
-
       function requestMyLocation() {
         if (!('geolocation' in navigator)) {
-          showLocInfo('<span class="err">⚠ Browser tidak mendukung Geolocation.</span>');
-          return;
+          showLocInfo('<span class="err">⚠ Browser tidak mendukung Geolocation.</span>'); return;
         }
-        if (myLocBtn) {
-          myLocBtn.disabled = true;
-          myLocBtn.innerHTML = '⏳ Mencari…';
-        }
+        if (myLocBtn) { myLocBtn.disabled = true; myLocBtn.innerHTML = '⏳ Mencari…'; }
         navigator.geolocation.getCurrentPosition(
           onGeoSuccess, onGeoError,
           { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
         );
       }
-
       if (myLocBtn) myLocBtn.addEventListener('click', requestMyLocation);
 
       /* =========================================================
-         10. KLIK PASIEN → FOKUS  (+ HAPUS PER ITEM)
+         10. UTIL ITEM
          ========================================================= */
-      function findPatientMarker(item, patientId, lat, lng) {
-        if (window.patientMarkers && patientId != null &&
-            window.patientMarkers[patientId]) {
-          return window.patientMarkers[patientId];
-        }
-        if (item && item.__marker) return item.__marker;
-        return null;
-      }
-
       function getItemCoords(item) {
         if (!item) return null;
         var ds = item.dataset || {};
-        var lat = parseFloat(ds.lat);
-        var lng = parseFloat(ds.lng);
+        var lat = parseFloat(ds.lat), lng = parseFloat(ds.lng);
         if (isNaN(lat) || isNaN(lng)) return null;
         return { lat: lat, lng: lng };
       }
-
       function getItemName(item) {
         if (!item) return 'Pasien';
         var nm = item.querySelector('strong, b, .name, .item-name');
@@ -731,104 +1101,402 @@
         if (item.dataset && item.dataset.name) return item.dataset.name;
         return 'Pasien';
       }
-
+      function getItemNIK(item) {
+        if (!item) return '';
+        if (item.dataset && item.dataset.nik) return sanitizeNIK(item.dataset.nik);
+        var el = item.querySelector('.item-nik .item-nik-value');
+        if (el && el.textContent) return sanitizeNIK(el.textContent);
+        return '';
+      }
       function getItemId(item) {
         if (!item) return null;
         var ds = item.dataset || {};
         return ds.id || ds.patientId || ds.patient_id || null;
       }
-
-      function focusPatient(item) {
-        if (!item) return;
-
-        var name = getItemName(item);
-        var id   = getItemId(item);
+      function getItemPriority(item) {
+        if (!item) return DEFAULT_PRIORITY;
+        return normalizePriority(item.dataset && item.dataset.priority);
+      }
+      function getPatientPayload(item) {
+        var id = getItemId(item);
+        var live = (id && patientData[id]) ? patientData[id] : null;
         var crd  = getItemCoords(item);
-        var lat  = crd ? crd.lat : null;
-        var lng  = crd ? crd.lng : null;
+        return {
+          id: id,
+          name: getItemName(item),
+          nik: getItemNIK(item),
+          priority: getItemPriority(item),
+          lat: live ? live.lat : (crd ? crd.lat : null),
+          lng: live ? live.lng : (crd ? crd.lng : null),
+          accuracy: live ? live.accuracy : null,
+          speed: live ? live.speed : null,
+          heading: live ? live.heading : null,
+          ts: live ? live.ts : null,
+          phone: live ? live.phone : null
+        };
+      }
 
-        var marker = findPatientMarker(item, id, lat, lng);
-        if ((lat == null || lng == null) && marker &&
-            typeof marker.getLatLng === 'function') {
-          var ll = marker.getLatLng();
-          lat = ll.lat;
-          lng = ll.lng;
+      /* =========================================================
+         10b. MODAL PETA PER-USER
+         ========================================================= */
+      var userMapOverlay   = $('userMapOverlay');
+      var userMapCanvas    = $('userMapCanvas');
+      var userMapTitle     = $('userMapTitle');
+      var userMapSubtitle  = $('userMapSubtitle');
+      var userMapMeta      = $('userMapMeta');
+      var userMapCloseBtn  = $('userMapClose');
+      var userMapGmaps     = $('userMapGmaps');
+      var userMapWA        = $('userMapWA');
+      var userMapFocusMain = $('userMapFocusMain');
+
+      var userMapInstance  = null;
+      var userMapMarker    = null;
+      var userMapAccuracy  = null;
+      var userMapTrack     = null;
+      var userMapTrackPts  = [];
+      var userMapTarget    = null;
+      var userMapFollow    = true;
+      var userMapFollowBtn = null;
+
+      function destroyUserMap() {
+        userMapMarker = null;
+        userMapAccuracy = null;
+        userMapTrack = null;
+        userMapTrackPts = [];
+        if (userMapInstance) {
+          try { userMapInstance.remove(); } catch (e) {}
+          userMapInstance = null;
+        }
+        if (userMapCanvas) userMapCanvas.innerHTML = '';
+      }
+
+      function makeUserMapPin(priority, heading) {
+        var meta = getPriorityMeta(normalizePriority(priority));
+        var rot = (heading != null && isFinite(heading)) ? Number(heading) : 0;
+        return L.divIcon({
+          className: '',
+          html:
+            '<div style="position:relative;width:32px;height:32px;">' +
+              '<div style="position:absolute;inset:0;border-radius:50%;background:' + meta.color +
+                ';border:3px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,.35);display:flex;' +
+                'align-items:center;justify-content:center;">' +
+                '<div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;' +
+                  'border-bottom:11px solid #fff;transform:rotate(' + rot + 'deg);transform-origin:50% 65%;"></div>' +
+              '</div>' +
+              '<div style="position:absolute;inset:-8px;border-radius:50%;border:3px solid ' + meta.color +
+                ';opacity:.35;animation:umaPulse 1.8s ease-out infinite;"></div>' +
+            '</div>',
+          iconSize: [32, 32],
+          iconAnchor: [16, 16],
+          popupAnchor: [0, -14]
+        });
+      }
+
+      function renderUserMapMeta() {
+        if (!userMapTarget || !userMapMeta) return;
+        var t = userMapTarget;
+        var when = '';
+        if (t.ts) { try { when = new Date(t.ts).toLocaleTimeString('id-ID'); } catch (e) {} }
+
+        var distToHosp = null;
+        if (HOSPITAL_COORD) {
+          distToHosp = haversineMeters(t.lat, t.lng, HOSPITAL_COORD.lat, HOSPITAL_COORD.lng);
+        }
+        var status = journeyStatus(t.speed, distToHosp);
+
+        var distLine = '';
+        if (HOSPITAL_COORD && distToHosp != null) {
+          var speedForEta = (t.speed != null && t.speed > 0.5) ? t.speed : 1.4;
+          var etaSec = distToHosp / speedForEta;
+          distLine =
+            '<br><b>🎯 Ke RS</b> ' + fmtDistance(distToHosp) +
+            ' &nbsp; <b>⏱️ ETA</b> ' + fmtEta(etaSec);
         }
 
-        var siblings = listEl.querySelectorAll('.item');
-        for (var i = 0; i < siblings.length; i++) {
-          siblings[i].classList.remove('active');
-        }
-        item.classList.add('active');
-
-        var t = $('locText1');
-        if (t) {
-          var subText = 'Membagikan lokasi langsung';
-          if (lat != null && lng != null) {
-            subText = 'Lat ' + Number(lat).toFixed(5) +
-                      ', Lng ' + Number(lng).toFixed(5);
-          }
-          t.innerHTML = 'Lokasi ' +
-            String(name).replace(/</g, '&lt;') +
-            '<small>' + subText + '</small>';
+        var spdLine = '';
+        if (t.speed != null && isFinite(t.speed)) {
+          spdLine = ' &nbsp; <b>Kecepatan</b> ' + (t.speed * 3.6).toFixed(1) + ' km/j';
         }
 
-        if (window.map && lat != null && lng != null) {
-          try {
-            if (typeof window.map.flyTo === 'function') {
-              window.map.flyTo([lat, lng], 17, { duration: 1.2 });
-            } else {
-              window.map.setView([lat, lng], 17, { animate: true });
-            }
-          } catch (e) {
-            window.map.setView([lat, lng], 17);
+        userMapMeta.innerHTML =
+          '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">' +
+            '<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:' + status.color + ';"></span>' +
+            '<b style="color:' + status.color + ';font-family:-apple-system,system-ui,sans-serif;">' + status.text + '</b>' +
+          '</div>' +
+          '<b>Lat</b> ' + Number(t.lat).toFixed(6) +
+          ' &nbsp; <b>Lng</b> ' + Number(t.lng).toFixed(6) +
+          (t.accuracy != null ? '<br><b>Akurasi</b> ±' + Math.round(t.accuracy) + ' m' + spdLine : spdLine) +
+          distLine +
+          (when ? '<br><b>Update</b> ' + when : '');
+      }
+
+      function updateUserMapLive() {
+        if (!userMapTarget || !userMapInstance || !userMapMarker) return;
+        var t = userMapTarget;
+
+        animateMarkerTo(userMapMarker, t.lat, t.lng, 900);
+        userMapMarker.setIcon(makeUserMapPin(t.priority, t.heading));
+
+        var acc = t.accuracy != null ? '±' + Math.round(t.accuracy) + ' m' : '-';
+        var when = '';
+        if (t.ts) { try { when = new Date(t.ts).toLocaleTimeString('id-ID'); } catch (e) {} }
+        userMapMarker.setPopupContent(
+          '<div style="min-width:180px;">' +
+            '<b>' + escapeHtml(t.name || 'Pasien') + '</b>' +
+            (t.nik ? '<br><span style="font-size:11px;color:#1B5FAA;font-weight:700;font-family:ui-monospace,Menlo,Consolas,monospace;">NIK ' + escapeHtml(t.nik) + '</span>' : '') +
+            '<br><span style="font-size:11px;color:#555;">' +
+              'Lat ' + Number(t.lat).toFixed(6) + ', Lng ' + Number(t.lng).toFixed(6) +
+              '<br>Akurasi ' + acc +
+              (when ? '<br>Update: ' + when : '') +
+            '</span>' +
+          '</div>'
+        );
+
+        if (t.accuracy != null && isFinite(t.accuracy) && t.accuracy > 0) {
+          if (userMapAccuracy) {
+            userMapAccuracy.setLatLng([t.lat, t.lng]).setRadius(t.accuracy);
+          } else {
+            var meta = getPriorityMeta(normalizePriority(t.priority));
+            userMapAccuracy = L.circle([t.lat, t.lng], {
+              radius: t.accuracy, color: meta.color, weight: 1,
+              fillColor: meta.color, fillOpacity: 0.12
+            }).addTo(userMapInstance);
           }
-          if (marker && typeof marker.openPopup === 'function') {
-            setTimeout(function () {
-              try { marker.openPopup(); } catch (e) {}
-            }, 1300);
+        }
+
+        var last = userMapTrackPts[userMapTrackPts.length - 1];
+        if (!last || haversineMeters(last[0], last[1], t.lat, t.lng) > 15) {
+          userMapTrackPts.push([t.lat, t.lng]);
+          if (userMapTrackPts.length > 500) userMapTrackPts.shift();
+          if (userMapTrack) {
+            userMapTrack.setLatLngs(userMapTrackPts);
+          } else if (userMapTrackPts.length > 1) {
+            var meta2 = getPriorityMeta(normalizePriority(t.priority));
+            userMapTrack = L.polyline(userMapTrackPts, {
+              color: meta2.color, weight: 4, opacity: 0.75,
+              dashArray: '1 8', lineCap: 'round'
+            }).addTo(userMapInstance);
           }
+        }
+
+        if (userMapFollow) {
+          try { userMapInstance.panTo([t.lat, t.lng], { animate: true, duration: 0.5 }); } catch (e) {}
+        }
+
+        renderUserMapMeta();
+
+        if (userMapWA && userMapTarget) {
+          userMapWA.setAttribute('href',
+            buildWALink(userMapTarget, { toPatient: !!userMapTarget.phone }));
         }
       }
 
+      function ensureFollowBtn() {
+        if (userMapFollowBtn) return;
+        userMapFollowBtn = document.createElement('button');
+        userMapFollowBtn.type = 'button';
+        userMapFollowBtn.style.cssText =
+          'position:absolute;top:10px;right:10px;z-index:500;background:#fff;border:1px solid #d0d7e2;' +
+          'border-radius:999px;padding:6px 12px;font-size:12px;font-weight:700;color:#1B5FAA;cursor:pointer;' +
+          'box-shadow:0 2px 8px rgba(0,0,0,.12);font-family:inherit;';
+        userMapFollowBtn.textContent = '🎯 Follow: ON';
+        userMapFollowBtn.addEventListener('click', function () {
+          userMapFollow = !userMapFollow;
+          userMapFollowBtn.textContent = userMapFollow ? '🎯 Follow: ON' : '🎯 Follow: OFF';
+          userMapFollowBtn.style.color = userMapFollow ? '#1B5FAA' : '#888';
+        });
+        var canvasWrap = userMapCanvas.parentNode;
+        if (canvasWrap) {
+          if (getComputedStyle(canvasWrap).position === 'static') {
+            canvasWrap.style.position = 'relative';
+          }
+          canvasWrap.appendChild(userMapFollowBtn);
+        }
+      }
+
+      function openUserMap(item) {
+        if (!item || !window.L || !userMapOverlay) return;
+
+        var crd = getItemCoords(item);
+        if (!crd) { alert('Lokasi pasien ini belum tersedia.'); return; }
+
+        var id = getItemId(item);
+        var live = (id && patientData[id]) ? patientData[id] : null;
+
+        var name = getItemName(item);
+        var nik  = getItemNIK(item);
+        var prio = getItemPriority(item);
+        var acc  = live ? live.accuracy : null;
+        var ts   = live ? live.ts : null;
+        var speed = live ? live.speed : null;
+        var heading = live ? live.heading : null;
+        var phone = live ? live.phone : null;
+        var meta = getPriorityMeta(prio);
+
+        userMapTarget = {
+          id: id, name: name, nik: nik, priority: prio,
+          lat: crd.lat, lng: crd.lng, accuracy: acc, ts: ts,
+          speed: speed, heading: heading, phone: phone
+        };
+        userMapFollow = true;
+
+        userMapTitle.textContent = name || 'Pasien';
+        var subParts = [];
+        if (nik) subParts.push('NIK ' + nik);
+        subParts.push(meta.label);
+        userMapSubtitle.innerHTML =
+          escapeHtml(subParts[0] || '') +
+          (subParts[1] ? '<span class="uma-tag">' + escapeHtml(subParts[1]) + '</span>' : '');
+
+        renderUserMapMeta();
+
+        if (userMapGmaps) {
+          userMapGmaps.setAttribute('href',
+            'https://www.google.com/maps/dir/?api=1&destination=' +
+            encodeURIComponent(crd.lat + ',' + crd.lng));
+        }
+
+        if (userMapWA) {
+          userMapWA.setAttribute('href',
+            buildWALink(userMapTarget, { toPatient: !!userMapTarget.phone }));
+        }
+
+        userMapOverlay.classList.add('show');
+        lockBody();
+        destroyUserMap();
+
+        setTimeout(function () {
+          var tileCfg = window.__TILE_CFG__ || {
+            url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+            attribution: '&copy; OpenStreetMap'
+          };
+
+          userMapInstance = L.map(userMapCanvas, {
+            zoomControl: true, attributionControl: true, preferCanvas: true
+          }).setView([crd.lat, crd.lng], 17);
+
+          L.tileLayer(tileCfg.url, {
+            maxZoom: tileCfg.maxZoom || 20,
+            attribution: tileCfg.attribution
+          }).addTo(userMapInstance);
+
+          userMapMarker = L.marker([crd.lat, crd.lng], {
+            icon: makeUserMapPin(prio, heading),
+            title: name
+          }).addTo(userMapInstance);
+          userMapMarker.bindPopup(
+            '<div style="min-width:180px;">' +
+              '<b>' + escapeHtml(name || 'Pasien') + '</b>' +
+              (nik ? '<br><span style="font-size:11px;color:#1B5FAA;font-weight:700;font-family:ui-monospace,Menlo,Consolas,monospace;">NIK ' + escapeHtml(nik) + '</span>' : '') +
+              '<br><span style="font-size:11px;color:#555;">Kelas: <b>' + escapeHtml(meta.label) + '</b></span>' +
+            '</div>'
+          ).openPopup();
+
+          userMapTrackPts = [[crd.lat, crd.lng]];
+
+          if (acc != null && isFinite(acc) && acc > 0) {
+            userMapAccuracy = L.circle([crd.lat, crd.lng], {
+              radius: acc, color: meta.color, weight: 1,
+              fillColor: meta.color, fillOpacity: 0.12
+            }).addTo(userMapInstance);
+          }
+
+          if (HOSPITAL_COORD) {
+            L.marker([HOSPITAL_COORD.lat, HOSPITAL_COORD.lng], {
+              icon: L.divIcon({
+                className: '',
+                html: '<div class="pin hosp">+</div>',
+                iconSize: [30, 30], iconAnchor: [15, 15]
+              })
+            }).addTo(userMapInstance).bindTooltip(HOSPITAL_COORD.name);
+
+            L.polyline(
+              [[crd.lat, crd.lng], [HOSPITAL_COORD.lat, HOSPITAL_COORD.lng]],
+              { color: '#1B5FAA', weight: 2, opacity: 0.45, dashArray: '5 8' }
+            ).addTo(userMapInstance);
+          }
+
+          ensureFollowBtn();
+          if (userMapFollowBtn) {
+            userMapFollowBtn.textContent = '🎯 Follow: ON';
+            userMapFollowBtn.style.color = '#1B5FAA';
+          }
+
+          setTimeout(function () { try { userMapInstance.invalidateSize(); } catch (e) {} }, 60);
+          setTimeout(function () { try { userMapInstance.invalidateSize(); } catch (e) {} }, 320);
+        }, 30);
+      }
+
+      function closeUserMap() {
+        if (!userMapOverlay) return;
+        userMapOverlay.classList.remove('show');
+        unlockBody();
+        setTimeout(destroyUserMap, 220);
+        userMapTarget = null;
+        if (userMapFollowBtn) { try { userMapFollowBtn.remove(); } catch (e) {} userMapFollowBtn = null; }
+      }
+
+      if (userMapCloseBtn) userMapCloseBtn.addEventListener('click', closeUserMap);
+      if (userMapOverlay) userMapOverlay.addEventListener('click', function (e) {
+        if (e.target === userMapOverlay) closeUserMap();
+      });
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && userMapOverlay && userMapOverlay.classList.contains('show')) {
+          closeUserMap();
+        }
+      });
+      if (userMapFocusMain) {
+        userMapFocusMain.addEventListener('click', function () {
+          var t = userMapTarget;
+          closeUserMap();
+          if (!t) return;
+          setTimeout(function () {
+            if (window.map && typeof window.map.flyTo === 'function') {
+              window.map.flyTo([t.lat, t.lng], 17, { duration: 1.2 });
+            }
+            var m = window.patientMarkers && window.patientMarkers[t.id];
+            if (m && typeof m.openPopup === 'function') {
+              setTimeout(function () { try { m.openPopup(); } catch (e) {} }, 1300);
+            }
+          }, 260);
+        });
+      }
+      window.addEventListener('resize', function () {
+        if (userMapInstance) { try { userMapInstance.invalidateSize(); } catch (e) {} }
+      });
+
+      /* =========================================================
+         11. KLIK PASIEN → BUKA MODAL PETA PER-USER (+ WA)
+         ========================================================= */
       listEl.addEventListener('click', function (e) {
-        /* --- HAPUS PER ITEM --- */
-        var delBtn = e.target.closest
-          ? e.target.closest('.del, .remove-btn, [data-action="delete"]')
+        /* ── TOMBOL WHATSAPP PER ITEM ── */
+        var waBtn = e.target.closest
+          ? e.target.closest('.wa-btn, [data-action="wa"]')
           : null;
-        if (delBtn) {
+        if (waBtn) {
           e.preventDefault();
           e.stopPropagation();
-          var li = delBtn.closest ? delBtn.closest('.item') : null;
-          if (li) {
-            var pid = getItemId(li);
-            var pname = getItemName(li);
-            var konfirmasi = true;
-            if (typeof window.confirm === 'function') {
-              konfirmasi = window.confirm(
-                'Hapus "' + pname + '" dari riwayat Pasien Prioritas?'
-              );
-            }
-            if (konfirmasi && pid) {
-              persistRemoval(pid);   // hapus dari localStorage dulu
-              removePatient({ id: pid });
-            }
+          var waLi = waBtn.closest ? waBtn.closest('.item') : null;
+          if (waLi) {
+            var payload = getPatientPayload(waLi);
+            var waUrl = buildWALink(payload, { toPatient: !!payload.phone });
+            window.open(waUrl, '_blank', 'noopener');
           }
           return;
         }
 
-        /* --- KLIK ITEM → FOKUS --- */
+        /* ── KLIK ITEM (non-tombol) → BUKA MODAL PETA ── */
         var node = e.target;
         while (node && node !== listEl) {
           if (node.classList && node.classList.contains('item')) break;
           node = node.parentNode;
         }
         if (!node || node === listEl) return;
-        focusPatient(node);
+        openUserMap(node);
       });
 
       /* =========================================================
-         11. TERIMA KOORDINAT PASIEN REALTIME
+         12. TERIMA KOORDINAT PASIEN REALTIME (peta utama)
          ========================================================= */
       window.patientMarkers = window.patientMarkers || {};
       var patientData = {};
@@ -848,20 +1516,18 @@
       }
 
       function makePatientPopupHTML(data) {
-        var safeName = String(data.name || 'Pasien').replace(/</g, '&lt;');
+        var safeName = escapeHtml(data.name || 'Pasien');
+        var nik = data.nik ? sanitizeNIK(data.nik) : '';
         var lat = Number(data.lat).toFixed(6);
         var lng = Number(data.lng).toFixed(6);
         var acc = data.accuracy != null ? '±' + Math.round(data.accuracy) + ' m' : '-';
         var prioLabel = getPriorityMeta(normalizePriority(data.priority)).label;
-
         var when = '';
-        if (data.ts) {
-          try { when = new Date(data.ts).toLocaleTimeString('id-ID'); } catch (e) {}
-        }
-
-        return '<div style="min-width:180px;">' +
-               '<b>' + safeName + '</b><br>' +
-               '<span style="font-size:11px;color:#555;">' +
+        if (data.ts) { try { when = new Date(data.ts).toLocaleTimeString('id-ID'); } catch (e) {} }
+        return '<div style="min-width:200px;">' +
+               '<b>' + safeName + '</b>' +
+               (nik ? '<br><span style="font-size:11px;color:#1B5FAA;font-weight:700;font-family:ui-monospace,Menlo,Consolas,monospace;">NIK ' + nik + '</span>' : '') +
+               '<br><span style="font-size:11px;color:#555;">' +
                  'Kelas: <b>' + prioLabel + '</b><br>' +
                  'Lat ' + lat + ', Lng ' + lng + '<br>' +
                  'Akurasi ' + acc +
@@ -881,14 +1547,19 @@
         if (isNaN(lat) || isNaN(lng)) return;
 
         var prio = normalizePriority(data.priority);
+        var nik  = sanitizeNIK(data.nik || '');
 
         patientData[id] = {
           id: id,
           name: data.name || 'Pasien',
+          nik: nik,
+          phone: data.phone ? String(data.phone).replace(/[^0-9]/g, '') : null,
           priority: prio,
           lat: lat,
           lng: lng,
-          accuracy: data.accuracy,
+          accuracy: data.accuracy != null ? Number(data.accuracy) : null,
+          heading: (data.heading != null && isFinite(Number(data.heading))) ? Number(data.heading) : null,
+          speed:   (data.speed   != null && isFinite(Number(data.speed)))   ? Number(data.speed)   : null,
           ts: data.ts || Date.now()
         };
 
@@ -910,38 +1581,32 @@
           var wasOpen = (typeof marker.isPopupOpen === 'function') && marker.isPopupOpen();
           marker.setIcon(icon);
           marker.setPopupContent(popup);
-
           var from = marker.getLatLng();
           var farAway = Math.hypot(lat - from.lat, lng - from.lng) > 0.002;
           var dur = farAway ? 1500 : 900;
-
           animateMarkerTo(marker, lat, lng, dur, function () {
-            if (wasOpen) {
-              try { marker.openPopup(); } catch (e) {}
-            }
+            if (wasOpen) { try { marker.openPopup(); } catch (e) {} }
           });
         }
 
         upsertPatientListItem(patientData[id]);
+
+        if (userMapTarget && userMapTarget.id === id) {
+          userMapTarget.lat = lat;
+          userMapTarget.lng = lng;
+          userMapTarget.accuracy = patientData[id].accuracy;
+          userMapTarget.heading = patientData[id].heading;
+          userMapTarget.speed   = patientData[id].speed;
+          userMapTarget.ts      = patientData[id].ts;
+          userMapTarget.priority = prio;
+          userMapTarget.phone   = patientData[id].phone;
+          updateUserMapLive();
+        }
       }
 
-      /**
-       * Bangun satu baris item pasien:
-       *
-       *   <li class="item">
-       *     <button class="item-btn">
-       *       <div class="item-top">
-       *         <div>  <strong>Nama</strong><div class="item-meta">Lat, Lng</div> </div>
-       *         <div class="item-actions">
-       *             <span class="tag">VVIP</span>
-       *             <button class="del">Hapus</button>
-       *         </div>
-       *       </div>
-       *     </button>
-       *   </li>
-       *
-       * Tombol "Hapus" sejajar rapi dengan tag prioritas (bukan absolute).
-       */
+      /* =========================================================
+         13. ITEM LIST — HANYA tombol Whatsapp
+         ========================================================= */
       function upsertPatientListItem(data) {
         var id = data.id;
         var item = listEl.querySelector('[data-id="' + id + '"]');
@@ -949,12 +1614,14 @@
         var prio = normalizePriority(data.priority);
         var meta = getPriorityMeta(prio);
         var label = meta.label;
+        var nik = sanitizeNIK(data.nik || '');
 
         if (!item) {
           item = document.createElement('li');
-          item.className = 'item ' + meta.cls;
+          item.className = 'item ' + meta.cls + ' is-clickable';
           item.dataset.id = id;
           item.dataset.name = data.name;
+          item.dataset.nik = nik;
           item.dataset.priority = prio;
           item.dataset.lat = data.lat;
           item.dataset.lng = data.lng;
@@ -966,11 +1633,24 @@
           var top = document.createElement('div');
           top.className = 'item-top';
 
-          /* --- Kiri: nama + meta --- */
           var nameWrap = document.createElement('div');
           var nameEl = document.createElement('strong');
           nameEl.textContent = data.name;
           nameWrap.appendChild(nameEl);
+
+          if (nik) {
+            var nikEl = document.createElement('div');
+            nikEl.className = 'item-nik';
+            var nikLbl = document.createElement('span');
+            nikLbl.className = 'item-nik-label';
+            nikLbl.textContent = 'NIK';
+            var nikVal = document.createElement('span');
+            nikVal.className = 'item-nik-value';
+            nikVal.textContent = nik;
+            nikEl.appendChild(nikLbl);
+            nikEl.appendChild(nikVal);
+            nameWrap.appendChild(nikEl);
+          }
 
           var nameMeta = document.createElement('div');
           nameMeta.className = 'item-meta';
@@ -978,33 +1658,56 @@
                                  ', Lng ' + Number(data.lng).toFixed(5);
           nameWrap.appendChild(nameMeta);
 
-          /* --- Kanan: tag + tombol hapus dalam satu grup --- */
+          /* Grup kanan: HANYA tombol Whatsapp */
           var actions = document.createElement('div');
           actions.className = 'item-actions';
 
-          var tag = document.createElement('span');
-          tag.className = 'tag ' + meta.cls;
-          tag.textContent = label;
-          actions.appendChild(tag);
-
-          var del = document.createElement('button');
-          del.type = 'button';
-          del.className = 'del';
-          del.setAttribute('aria-label', 'Hapus ' + data.name + ' dari riwayat');
-          del.title = 'Hapus dari riwayat';
-          del.textContent = 'Hapus';   /* <-- tulisan, bukan simbol ✕ */
-          actions.appendChild(del);
+          var waBtn = document.createElement('button');
+          waBtn.type = 'button';
+          waBtn.className = 'wa-btn';
+          waBtn.setAttribute('data-action', 'wa');
+          waBtn.setAttribute('aria-label', 'Kirim Whatsapp tentang ' + data.name);
+          waBtn.title = 'Kirim Whatsapp';
+          waBtn.textContent = 'Whatsapp';
+          actions.appendChild(waBtn);
 
           top.appendChild(nameWrap);
           top.appendChild(actions);
           btn.appendChild(top);
-
           item.appendChild(btn);
           listEl.appendChild(item);
         } else {
           item.dataset.lat = data.lat;
           item.dataset.lng = data.lng;
           item.dataset.priority = prio;
+          item.dataset.nik = nik;
+
+          var existingNik = item.querySelector('.item-nik');
+          if (nik) {
+            if (existingNik) {
+              var valEl = existingNik.querySelector('.item-nik-value');
+              if (valEl) valEl.textContent = nik;
+            } else {
+              var nameWrap2 = item.querySelector('.item-top > div:first-child');
+              if (nameWrap2) {
+                var newNik = document.createElement('div');
+                newNik.className = 'item-nik';
+                var nlb = document.createElement('span');
+                nlb.className = 'item-nik-label';
+                nlb.textContent = 'NIK';
+                var nvl = document.createElement('span');
+                nvl.className = 'item-nik-value';
+                nvl.textContent = nik;
+                newNik.appendChild(nlb);
+                newNik.appendChild(nvl);
+                var metaNode = nameWrap2.querySelector('.item-meta');
+                if (metaNode) nameWrap2.insertBefore(newNik, metaNode);
+                else nameWrap2.appendChild(newNik);
+              }
+            }
+          } else if (existingNik && existingNik.parentNode) {
+            existingNik.parentNode.removeChild(existingNik);
+          }
 
           var metaEl = item.querySelector('.item-meta');
           if (metaEl) {
@@ -1017,7 +1720,7 @@
             tagEl.textContent = label;
           }
           var wasActive = item.classList.contains('active');
-          item.className = 'item ' + meta.cls + (wasActive ? ' active' : '');
+          item.className = 'item ' + meta.cls + ' is-clickable' + (wasActive ? ' active' : '');
         }
 
         if (window.patientMarkers[id]) {
@@ -1061,10 +1764,6 @@
         updateLiveTag();
       }
 
-      /**
-       * Hapus 1 id dari localStorage agar tidak muncul kembali
-       * saat polling loadFromLocalStorage() berikutnya.
-       */
       function persistRemoval(id) {
         try {
           var raw = localStorage.getItem(LS_LIVE_KEY);
@@ -1088,11 +1787,10 @@
         if (!data || !data.id) return;
         var existing = patientData[data.id];
         if (!existing) return;
-
         existing.name = data.name || existing.name;
-        if (data.priority) {
-          existing.priority = normalizePriority(data.priority);
-        }
+        if (data.nik != null) existing.nik = sanitizeNIK(data.nik);
+        if (data.phone != null) existing.phone = String(data.phone).replace(/[^0-9]/g, '');
+        if (data.priority) existing.priority = normalizePriority(data.priority);
 
         var marker = window.patientMarkers[data.id];
         if (marker) {
@@ -1100,6 +1798,25 @@
           marker.setPopupContent(makePatientPopupHTML(existing));
         }
         upsertPatientListItem(existing);
+
+        if (userMapTarget && userMapTarget.id === data.id) {
+          userMapTarget.name = existing.name;
+          userMapTarget.nik = existing.nik;
+          userMapTarget.phone = existing.phone;
+          userMapTarget.priority = existing.priority;
+          userMapTitle.textContent = existing.name || 'Pasien';
+          var prioMeta = getPriorityMeta(existing.priority);
+          var sub2 = [];
+          if (existing.nik) sub2.push('NIK ' + existing.nik);
+          sub2.push(prioMeta.label);
+          userMapSubtitle.innerHTML =
+            escapeHtml(sub2[0] || '') +
+            (sub2[1] ? '<span class="uma-tag">' + escapeHtml(sub2[1]) + '</span>' : '');
+          if (userMapWA) {
+            userMapWA.setAttribute('href',
+              buildWALink(userMapTarget, { toPatient: !!userMapTarget.phone }));
+          }
+        }
       }
 
       function updateLiveTag() {
@@ -1113,7 +1830,7 @@
       }
 
       /* =========================================================
-         12. TRANSPORT
+         14. TRANSPORT
          ========================================================= */
       var rxTransport = null;
       if (typeof createTransport === 'function') {
@@ -1149,7 +1866,7 @@
       }
 
       /* =========================================================
-         13. FALLBACK localStorage
+         15. FALLBACK localStorage
          ========================================================= */
       var LS_LIVE_KEY = 'pasien_lokasi_live';
       var lastSnapshot = '';
@@ -1183,6 +1900,7 @@
           arr.forEach(function (p) {
             if (p && p.lat != null && p.lng != null) {
               p.priority = normalizePriority(p.priority);
+              p.nik = sanitizeNIK(p.nik || '');
               activeIds[p.id] = true;
               upsertPatientMarker(p);
             }
@@ -1203,20 +1921,14 @@
           loadFromLocalStorage(true);
         }, { once: true });
       }
-
-      window.addEventListener('load', function () {
-        loadFromLocalStorage(true);
-      });
-
+      window.addEventListener('load', function () { loadFromLocalStorage(true); });
       window.addEventListener('storage', function (e) {
         if (e.key === LS_LIVE_KEY) {
           lastSnapshot = '';
           loadFromLocalStorage(true);
         }
       });
-
       setInterval(function () { loadFromLocalStorage(false); }, 2000);
-
       document.addEventListener('visibilitychange', function () {
         if (document.visibilityState === 'visible') {
           lastSnapshot = '';
@@ -1225,7 +1937,7 @@
       });
 
       /* =========================================================
-         13b. TOMBOL HAPUS RIWAYAT (GLOBAL)
+         16. TOMBOL HAPUS RIWAYAT (GLOBAL)
          ========================================================= */
       function updateClearHistoryBtn() {
         var btn = $('clearHistoryBtn');
@@ -1238,9 +1950,6 @@
           : 'Tidak ada riwayat untuk dihapus';
       }
 
-      /**
-       * Hapus SEMUA riwayat pasien.
-       */
       function clearAllHistory() {
         var total = listEl.querySelectorAll('.item').length;
         if (!total) { updateClearHistoryBtn(); return; }
@@ -1254,7 +1963,6 @@
           if (!ok) return;
         }
 
-        // 1) Hapus marker + data in-memory
         Object.keys(window.patientMarkers || {}).forEach(function (id) {
           var marker = window.patientMarkers[id];
           if (marker && window.map && typeof window.map.removeLayer === 'function') {
@@ -1268,32 +1976,27 @@
           delete patientData[id];
         });
 
-        // 2) Kosongkan DOM list
         while (listEl.firstChild) listEl.removeChild(listEl.firstChild);
-
-        // 3) Hapus penyimpanan lokal
         try { localStorage.removeItem(LS_LIVE_KEY); } catch (e) {}
         lastSnapshot = '';
 
-        // 4) Reset teks
         var summaryEl = $('summary');
         if (summaryEl) summaryEl.textContent = 'Belum ada pasien yang membagikan lokasi.';
-
         var t = $('locText1');
         if (t) t.innerHTML = 'Lokasi Pasien<small>Menunggu data…</small>';
-
         var icon = $('locIcon1');
         if (icon) icon.className = 'loc-icon green';
 
-        // 5) Update UI + layout
         updateLiveTag();
         updateClearHistoryBtn();
         syncSheet();
         fixMap(80);
 
-        try {
-          console.info('[riwayat] Semua riwayat pasien prioritas dihapus.');
-        } catch (e) {}
+        if (userMapOverlay && userMapOverlay.classList.contains('show')) {
+          closeUserMap();
+        }
+
+        try { console.info('[riwayat] Semua riwayat pasien prioritas dihapus.'); } catch (e) {}
       }
 
       var clearHistoryBtn = $('clearHistoryBtn');
@@ -1305,11 +2008,10 @@
         });
       }
 
-      // Sinkronkan state awal
       updateLiveTag();
 
       /* =========================================================
-         14. API PUBLIK
+         17. API PUBLIK
          ========================================================= */
       window.__dashboard = {
         upsert: upsertPatientMarker,
@@ -1317,15 +2019,20 @@
         updateInfo: updatePatientInfo,
         reload: function () { lastSnapshot = ''; loadFromLocalStorage(true); },
         normalizePriority: normalizePriority,
+        sanitizeNIK: sanitizeNIK,
+        buildWALink: buildWALink,
+        waConfig: WA_CONFIG,
         markers: window.patientMarkers,
         data: patientData,
+        hospital: HOSPITAL_COORD,
         transport: function () { return rxTransport; },
         lockBody: lockBody,
         unlockBody: unlockBody,
         syncSheet: syncSheet,
         fixMap: fixMap,
         animateMarkerTo: animateMarkerTo,
-        /* --- utilitas hapus riwayat --- */
+        openUserMap: openUserMap,
+        closeUserMap: closeUserMap,
         clearAllHistory: clearAllHistory,
         persistRemoval: persistRemoval
       };
