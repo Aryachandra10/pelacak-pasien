@@ -33,6 +33,37 @@ $GEOAPIFY_API_KEY = 'fc249c8458504d8790e29e110336616b';
 $MAP_PROVIDER = 'geoapify'; // ganti ke 'google' kalau pakai Google Maps
 
 // ============================================================
+//  ☎️  NOMOR LAYANAN WHATSAPP RS PELABUHAN JAKARTA
+// ============================================================
+// Nomor layanan WhatsApp resmi rumah sakit.
+// Semua modul (index.html, jadwal_berobat.html, patient.html,
+// whatsapp-service.js) akan otomatis mengambil dari sini.
+// ============================================================
+$WHATSAPP_RS_RAW = '0812-8835-7422'; // format tampilan (boleh pakai strip)
+
+// Sanitasi → hanya angka
+$WA_DIGITS = preg_replace('/[^0-9]/', '', $WHATSAPP_RS_RAW);
+
+// Normalisasi ke format internasional (62…)
+$WA_E164 = $WA_DIGITS;
+if ($WA_E164 !== '') {
+    if ($WA_E164[0] === '0') {
+        $WA_E164 = '62' . substr($WA_E164, 1);
+    } elseif ($WA_E164[0] === '8') {
+        $WA_E164 = '62' . $WA_E164;
+    } elseif (substr($WA_E164, 0, 2) !== '62') {
+        $WA_E164 = '62' . $WA_E164;
+    }
+}
+
+// Format tampilan lokal (0xxx-xxxx-xxxx)
+$WA_DISPLAY = $WA_DIGITS;
+if (substr($WA_DISPLAY, 0, 2) === '62') {
+    $WA_DISPLAY = '0' . substr($WA_DISPLAY, 2);
+}
+$WA_DISPLAY = preg_replace('/(\d{4})(?=\d)/', '$1-', $WA_DISPLAY);
+
+// ============================================================
 //  Susun URL tile Geoapify (hanya kalau provider = geoapify)
 //  Pakai concat (titik), bukan interpolasi, agar aman.
 // ============================================================
@@ -67,11 +98,34 @@ $config = [
     ],
     'MAP_ZOOM' => 13,
 
+    // ========================================================
+    // ☎️  NOMOR WHATSAPP ADMIN / LAYANAN RS
+    // ========================================================
+    // Dipakai oleh:
+    //   - index.html          → WA_CONFIG.adminNumber
+    //   - jadwal_berobat.html → default nomor admin
+    //   - whatsapp-service.js → WAService.config.adminNumber
+    //
+    // Tiga bentuk sekaligus agar kompatibel dengan semua pemanggil:
+    //   WHATSAPP_ADMIN    → "6281288357422" (paling sering dipakai)
+    //   WHATSAPP_ADMIN_E164 → sama, format internasional
+    //   WHATSAPP_ADMIN_DISPLAY → "0812-8835-7422" (untuk tampilan)
+    // ========================================================
+    'WHATSAPP_ADMIN'         => $WA_E164,
+    'WHATSAPP_ADMIN_E164'    => $WA_E164,
+    'WHATSAPP_ADMIN_DISPLAY' => $WA_DISPLAY,
+
     // 🏥 Tujuan pasien (rumah sakit / faskes)
+    // Field `whatsapp` & `whatsappE164` di sini juga penting — banyak
+    // modul membaca dari CONFIG.HOSPITAL.whatsapp untuk fallback.
     'HOSPITAL' => [
-        'name' => 'RS Pelabuhan Jakarta',
-        'lat'  => -6.125022,
-        'lng'  => 106.917765,
+        'name'         => 'RS Pelabuhan Jakarta',
+        'lat'          => -6.12504,
+        'lng'          => 106.91778,
+        'whatsapp'     => $WA_E164,        // dipakai index.html & jadwal_berobat.html
+        'whatsappE164' => $WA_E164,        // alias
+        'whatsappDisplay' => $WA_DISPLAY,  // untuk tampilan
+        'address'      => 'Jl. Pelabuhan No. 1, Jakarta Utara',
     ],
 
     // WebSocket:

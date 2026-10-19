@@ -5,11 +5,17 @@
   ===================================================================
   • Peta utama: Leaflet + tile Geoapify (dari config.php)
   • KLIK NAMA USER → MODAL PETA TERSENDIRI (per-user, TIDAK digabung)
-  • IDENTITAS PASIEN: name + NIK (16 digit)
-  • TOMBOL WHATSAPP (💬 Whatsapp) di setiap item
-  • FITUR HAPUS RIWAYAT:
-      - #clearHistoryBtn  → hapus SEMUA riwayat
-      - Tombol Delete per-item DIHAPUS (hanya clear all)
+  • IDENTITAS PASIEN: name + NIK (16 digit) + WA (nomor pasien)
+  • TOMBOL WHATSAPP → LANGSUNG ke NOMOR PASIEN
+    Nomor WA disinkronkan dari jadwal_berobat.html via NIK.
+    Kalau pasien tidak punya WA, fallback ke nomor admin RS.
+  • TOMBOL CHAT ADMIN → khusus untuk kirim ke admin RS (opsional).
+  • FITUR HAPUS RIWAYAT: #clearHistoryBtn → hapus SEMUA riwayat
+  • SYNC dengan jadwal_berobat.html:
+      - Field `nik` (16 digit, angka murni)
+      - Field `wa`  (nomor WhatsApp, angka murni, max 16 digit)
+      - localStorage key: 'jadwal_berobat_pasien'
+      - lookupWAFromJadwalByNIK() mencocokkan NIK → wa
   ===================================================================
 -->
 <html lang="id">
@@ -170,13 +176,15 @@
     }
     #list .item .item-top > div:first-child strong,
     #list .item .item-top > div:first-child .item-nik,
+    #list .item .item-top > div:first-child .item-wa,
     #list .item .item-top > div:first-child .item-meta {
       display: block;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
     }
-    #list .item .item-nik {
+    #list .item .item-nik,
+    #list .item .item-wa {
       font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Roboto Mono", monospace;
       font-size: 11px;
       font-weight: 700;
@@ -184,7 +192,8 @@
       color: #1B5FAA;
       margin-top: 2px;
     }
-    #list .item .item-nik .item-nik-label {
+    #list .item .item-nik .item-nik-label,
+    #list .item .item-wa .item-wa-label {
       display: inline-block;
       font-family: inherit;
       font-size: 9.5px;
@@ -198,6 +207,7 @@
       margin-right: 5px;
       vertical-align: middle;
     }
+    #list .item .item-wa .item-wa-label { background: #25D366; }
     #list .item .item-actions {
       display: inline-flex;
       align-items: center;
@@ -424,6 +434,14 @@
     }
     .user-map-btn.wa:hover { background: #1DA851; }
 
+    /* ─── TOMBOL WA ADMIN (warna beda — biru tua) ─── */
+    .user-map-btn.wa-admin {
+      background: #1B5FAA;
+      color: #fff;
+      box-shadow: 0 2px 6px rgba(27, 95, 170, 0.32);
+    }
+    .user-map-btn.wa-admin:hover { background: #144A87; }
+
     @media (min-width: 640px) {
       .user-map-overlay { align-items: center; padding: 24px; }
       .user-map-box {
@@ -540,8 +558,13 @@
       <div class="user-map-foot">
         <div class="user-map-meta" id="userMapMeta">—</div>
         <div class="user-map-actions">
-          <a class="user-map-btn wa" id="userMapWA" href="#" target="_blank" rel="noopener">
-            <span aria-hidden="true">💬</span><span>Whatsapp</span>
+          <a class="user-map-btn wa" id="userMapWA" href="#" target="_blank" rel="noopener"
+             title="Kirim WhatsApp ke pasien dengan template pesan">
+            <span aria-hidden="true">💬</span><span>Chat Pasien</span>
+          </a>
+          <a class="user-map-btn wa-admin" id="userMapWAAdmin" href="#" target="_blank" rel="noopener"
+             title="Kirim WhatsApp ke admin RS tentang pasien ini">
+            <span aria-hidden="true">📨</span><span>Chat Admin</span>
           </a>
           <a class="user-map-btn primary" id="userMapGmaps" href="#" target="_blank" rel="noopener">
             <span aria-hidden="true">🚗</span><span>Rute</span>
@@ -560,6 +583,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
   <script src="../config.php"></script>
   <script src="../js/transport.js"></script>
+  <script src="../js/whatsapp-service.js"></script>
 
   <!-- ============================================================
        INISIALISASI PETA UTAMA
@@ -569,7 +593,6 @@
       'use strict';
 
       var cfg    = window.CONFIG || {};
-      /* ▼ FIX: koordinat fallback disesuaikan dengan lokasi RS Pelabuhan Jakarta */
       var center = cfg.MAP_CENTER || { lat: -6.12504, lng: 106.91778 };
       var zoom   = cfg.MAP_ZOOM   || 13;
 
@@ -641,11 +664,27 @@
       var side = $('sidePanel');
 
       /* =========================================================
-         1b. UTIL NIK / HTML
+         1b. UTIL NIK / WA / HTML
          ========================================================= */
-      function sanitizeNIK(v) {
-        return String(v == null ? '' : v).replace(/[^0-9]/g, '').slice(0, 16);
+      function sanitizeDigits(v, max) {
+        var m = max || 16;
+        return String(v == null ? '' : v)
+          .replace(/[^0-9]/g, '')
+          .slice(0, m);
       }
+      function sanitizeNIK(v) { return sanitizeDigits(v, 16); }
+      function sanitizeWA(v)  { return sanitizeDigits(v, 16); }
+
+      /* Normalisasi ke format internasional (62…) untuk link wa.me */
+      function normalizeWA(v) {
+        var s = sanitizeWA(v);
+        if (!s) return '';
+        if (s.charAt(0) === '0') s = '62' + s.slice(1);
+        else if (s.charAt(0) === '8') s = '62' + s;
+        else if (s.indexOf('62') !== 0) s = '62' + s;
+        return s;
+      }
+
       function escapeHtml(s) {
         return String(s == null ? '' : s)
           .replace(/&/g, '&amp;').replace(/</g, '&lt;')
@@ -659,34 +698,170 @@
         var cfg = window.CONFIG || {};
         var adminNum = (cfg.WHATSAPP_ADMIN
                      || (cfg.HOSPITAL && (cfg.HOSPITAL.whatsapp || cfg.HOSPITAL.whatsappE164))
-                     || '6281234567890'); /* ← GANTI dengan nomor WA petugas RSPJ */
-        adminNum = String(adminNum).replace(/[^0-9]/g, '');
-        if (adminNum.indexOf('0') === 0) adminNum = '62' + adminNum.slice(1);
-        if (adminNum.indexOf('62') !== 0) adminNum = '62' + adminNum;
+                     || '6281288357422'); /* ← nomor layanan RS Pelabuhan Jakarta */
+        adminNum = normalizeWA(adminNum);
 
         return {
           adminNumber: adminNum,
+          adminDisplay: '+' + adminNum,
           hospitalName: (cfg.HOSPITAL && cfg.HOSPITAL.name) || 'RS Pelabuhan Jakarta'
         };
       })();
 
+      /* =========================================================
+         1d. SINKRONISASI WA DARI jadwal_berobat.html
+         =========================================================
+         jadwal_berobat.html menyimpan jadwal ke localStorage dengan
+         key 'jadwal_berobat_pasien'. Setiap entri punya:
+           { id, name, nik, wa, priority, date, time, place, note }
+
+         Di sini kita baca cache-nya, lalu lookup berdasarkan NIK.
+         Jadi kalau pasien punya jadwal berobat dengan NIK yang sama
+         di patientData, tombol WhatsApp otomatis pakai nomor pasien.
+         ========================================================= */
+      var JADWAL_STORAGE_KEY = 'jadwal_berobat_pasien';
+      var jadwalByNIK = {};       // cache: nik -> wa
+      var jadwalLastSnapshot = ''; // untuk deteksi perubahan
+
+      function rebuildJadwalCache() {
+        jadwalByNIK = {};
+        try {
+          var raw = localStorage.getItem(JADWAL_STORAGE_KEY);
+          if (!raw) return;
+          var arr = JSON.parse(raw);
+          if (!Array.isArray(arr)) return;
+          arr.forEach(function (it) {
+            if (!it) return;
+            var nik = sanitizeNIK(it.nik);
+            var wa  = sanitizeWA(
+              it.wa != null ? it.wa
+              : it.phone != null ? it.phone
+              : it.hp != null ? it.hp
+              : ''
+            );
+            if (nik && wa) {
+              /* Kalau ada beberapa entri dengan NIK sama, ambil yang terbaru */
+              jadwalByNIK[nik] = wa;
+            }
+          });
+        } catch (e) {
+          console.warn('[sync] gagal rebuild jadwal cache:', e);
+        }
+      }
+
+      /* Lookup WA berdasarkan NIK dari cache jadwal_berobat.html */
+      function lookupWAFromJadwalByNIK(nik) {
+        var n = sanitizeNIK(nik);
+        if (!n) return '';
+        return jadwalByNIK[n] || '';
+      }
+
+      /* Ambil nomor WA pasien dengan urutan prioritas:
+         1) field `wa` langsung dari patientData
+         2) dari jadwal_berobat.html by NIK
+         3) fallback ke `phone` / `hp` (data lama)
+      */
+      function resolvePatientWA(patient) {
+        if (!patient) return '';
+
+        /* 1. Coba dari field `wa` langsung */
+        var direct = sanitizeWA(patient.wa);
+        if (direct) return direct;
+
+        /* 2. Coba lookup dari jadwal_berobat by NIK */
+        var fromJadwal = lookupWAFromJadwalByNIK(patient.nik);
+        if (fromJadwal) return fromJadwal;
+
+        /* 3. Fallback ke field lama */
+        return sanitizeWA(
+          patient.phone != null ? patient.phone
+          : patient.hp != null ? patient.hp
+          : ''
+        );
+      }
+
+      /* Wrapper untuk payload pasien — selalu lewat resolver */
+      function pickPatientWA(patient) {
+        return resolvePatientWA(patient);
+      }
+
+      function hasPatientWA(patient) {
+        return !!pickPatientWA(patient);
+      }
+
+      /* Pantau perubahan localStorage jadwal_berobat */
+      function refreshJadwalCacheIfChanged() {
+        try {
+          var raw = localStorage.getItem(JADWAL_STORAGE_KEY) || '';
+          if (raw === jadwalLastSnapshot) return false;
+          jadwalLastSnapshot = raw;
+          rebuildJadwalCache();
+          return true;
+        } catch (e) {
+          return false;
+        }
+      }
+
+      /* Sinkronkan ulang nomor WA ke semua pasien di patientData */
+      function syncAllPatientWAB() {
+        var changed = false;
+        Object.keys(patientData).forEach(function (id) {
+          var p = patientData[id];
+          if (!p) return;
+          var resolved = resolvePatientWA(p);
+          if (resolved && resolved !== p.wa) {
+            p.wa = resolved;
+            changed = true;
+            /* Update tampilan list item */
+            upsertPatientListItem(p);
+            /* Update marker popup */
+            var m = window.patientMarkers[id];
+            if (m) {
+              try { m.setPopupContent(makePatientPopupHTML(p)); } catch (e) {}
+            }
+            /* Update modal user-map kalau sedang terbuka untuk pasien ini */
+            if (userMapTarget && userMapTarget.id === id) {
+              userMapTarget.wa = p.wa;
+              updateUserMapLive();
+            }
+          }
+        });
+        return changed;
+      }
+
+      /* BuildWALink — pakai resolvePatientWA supaya selalu sinkron */
       function buildWALink(patient, opts) {
         opts = opts || {};
-        var phone = null;
-        if (patient && patient.phone) {
-          phone = String(patient.phone).replace(/[^0-9]/g, '');
-          if (phone.indexOf('0') === 0) phone = '62' + phone.slice(1);
-          if (phone.indexOf('62') !== 0) phone = '62' + phone;
+
+        var raw = pickPatientWA(patient);
+        var patientNum = raw ? normalizeWA(raw) : '';
+
+        var toAdmin = !!opts.toAdmin;
+        var target;
+
+        if (toAdmin) {
+          target = opts.target || WA_CONFIG.adminNumber;
+        } else if (opts.target) {
+          target = opts.target;
+        } else if (patientNum) {
+          /* ✅ UTAMA: kirim ke PASIEN */
+          target = patientNum;
+        } else {
+          /* Fallback: kalau pasien tidak punya WA → admin RS */
+          target = WA_CONFIG.adminNumber;
         }
 
-        var target = phone || WA_CONFIG.adminNumber;
-        var msg = (opts.toPatient && phone)
-          ? buildWAMessageToPatient(patient)
-          : buildWAMessageToAdmin(patient);
+        var msg;
+        if (toAdmin || !patientNum) {
+          msg = buildWAMessageToAdmin(patient);
+        } else {
+          msg = buildWAMessageToPatient(patient);
+        }
 
         return 'https://wa.me/' + target + '?text=' + encodeURIComponent(msg);
       }
 
+      /* Template pesan untuk PASIEN */
       function buildWAMessageToPatient(p) {
         var name = (p && p.name) || 'Bapak/Ibu';
         var nik  = (p && p.nik)  ? sanitizeNIK(p.nik) : '';
@@ -721,13 +896,19 @@
         lines.push('');
         lines.push('Mohon berkendara dengan aman. Petugas kami akan menyambut Anda di lobi penerimaan.');
         lines.push('');
+        lines.push('📞 *Butuh bantuan? Hubungi petugas:*');
+        lines.push('https://wa.me/' + WA_CONFIG.adminNumber);
+        lines.push('');
         lines.push('Terima kasih 🙏');
         return lines.join('\n');
       }
 
+      /* Template pesan untuk ADMIN */
       function buildWAMessageToAdmin(p) {
         var name = (p && p.name) || 'Pasien';
         var nik  = (p && p.nik) ? sanitizeNIK(p.nik) : '-';
+        var waRaw = pickPatientWA(p);
+        var waNum = waRaw ? normalizeWA(waRaw) : '';
         var prioLabel = getPriorityMeta(normalizePriority(p && p.priority)).label;
         var lat  = p && p.lat != null ? Number(p.lat) : null;
         var lng  = p && p.lng != null ? Number(p.lng) : null;
@@ -754,6 +935,7 @@
         lines.push('');
         lines.push('*Nama*   : ' + name);
         lines.push('*NIK*    : ' + nik);
+        if (waNum) lines.push('*WA*     : ' + waNum);
         lines.push('*Kelas*  : ' + prioLabel);
         lines.push('');
         if (status && status.text) lines.push('*Status* : ' + status.text);
@@ -769,6 +951,13 @@
         lines.push('🎯 *Jarak ke RS* : ' + jarakStr);
         lines.push('⏱️ *ETA*          : ' + etaStr);
         if (waktu) lines.push('🕐 *Update*       : ' + waktu);
+
+        if (waNum) {
+          lines.push('');
+          lines.push('📱 *Balas ke pasien:*');
+          lines.push('https://wa.me/' + waNum);
+        }
+
         lines.push('');
         lines.push('Mohon dipersiapkan penerimaannya di lobi / area terkait.');
         return lines.join('\n');
@@ -899,9 +1088,6 @@
             name: h.name || 'RS Pelabuhan Jakarta'
           };
         } else {
-          /* ▼ FIX: koordinat fallback RS Pelabuhan Jakarta
-             Latitude  : -6.12504  (6° 07′ 30″ LS)
-             Longitude : 106.91778 (106° 55′ 06″ BT) */
           HOSPITAL_COORD = {
             lat: -6.12504,
             lng: 106.91778,
@@ -1112,6 +1298,13 @@
         if (el && el.textContent) return sanitizeNIK(el.textContent);
         return '';
       }
+      function getItemWA(item) {
+        if (!item) return '';
+        if (item.dataset && item.dataset.wa) return sanitizeWA(item.dataset.wa);
+        var el = item.querySelector('.item-wa .item-wa-value');
+        if (el && el.textContent) return sanitizeWA(el.textContent);
+        return '';
+      }
       function getItemId(item) {
         if (!item) return null;
         var ds = item.dataset || {};
@@ -1125,18 +1318,32 @@
         var id = getItemId(item);
         var live = (id && patientData[id]) ? patientData[id] : null;
         var crd  = getItemCoords(item);
+
+        var nik = getItemNIK(item) || (live ? live.nik : '');
+
+        /* Ambil WA dari beberapa sumber, prioritas:
+           1. live/patientData (yang sudah disinkronkan dengan jadwal)
+           2. dataset DOM
+           3. lookup jadwal_berobat by NIK
+        */
+        var waFromLive  = live ? resolvePatientWA(live) : '';
+        var waFromDom   = getItemWA(item);
+        var waFromJadwal = lookupWAFromJadwalByNIK(nik);
+
+        var wa = waFromLive || waFromDom || waFromJadwal;
+
         return {
           id: id,
           name: getItemName(item),
-          nik: getItemNIK(item),
+          nik: nik,
+          wa: wa,
           priority: getItemPriority(item),
           lat: live ? live.lat : (crd ? crd.lat : null),
           lng: live ? live.lng : (crd ? crd.lng : null),
           accuracy: live ? live.accuracy : null,
           speed: live ? live.speed : null,
           heading: live ? live.heading : null,
-          ts: live ? live.ts : null,
-          phone: live ? live.phone : null
+          ts: live ? live.ts : null
         };
       }
 
@@ -1151,6 +1358,7 @@
       var userMapCloseBtn  = $('userMapClose');
       var userMapGmaps     = $('userMapGmaps');
       var userMapWA        = $('userMapWA');
+      var userMapWAAdmin   = $('userMapWAAdmin');
       var userMapFocusMain = $('userMapFocusMain');
 
       var userMapInstance  = null;
@@ -1222,6 +1430,16 @@
           spdLine = ' &nbsp; <b>Kecepatan</b> ' + (t.speed * 3.6).toFixed(1) + ' km/j';
         }
 
+        var waLine = '';
+        var waVal = pickPatientWA(t);
+        if (waVal) {
+          waLine = '<br><b>WA Pasien</b> ' + escapeHtml(waVal) +
+                   ' &nbsp; <b>WA Admin</b> ' + escapeHtml(WA_CONFIG.adminNumber);
+        } else {
+          waLine = '<br><b>WA Pasien</b> <i style="color:#999;">belum ada</i>' +
+                   ' &nbsp; <b>WA Admin</b> ' + escapeHtml(WA_CONFIG.adminNumber);
+        }
+
         userMapMeta.innerHTML =
           '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">' +
             '<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:' + status.color + ';"></span>' +
@@ -1230,7 +1448,7 @@
           '<b>Lat</b> ' + Number(t.lat).toFixed(6) +
           ' &nbsp; <b>Lng</b> ' + Number(t.lng).toFixed(6) +
           (t.accuracy != null ? '<br><b>Akurasi</b> ±' + Math.round(t.accuracy) + ' m' + spdLine : spdLine) +
-          distLine +
+          distLine + waLine +
           (when ? '<br><b>Update</b> ' + when : '');
       }
 
@@ -1244,10 +1462,12 @@
         var acc = t.accuracy != null ? '±' + Math.round(t.accuracy) + ' m' : '-';
         var when = '';
         if (t.ts) { try { when = new Date(t.ts).toLocaleTimeString('id-ID'); } catch (e) {} }
+        var waVal = pickPatientWA(t);
         userMapMarker.setPopupContent(
           '<div style="min-width:180px;">' +
             '<b>' + escapeHtml(t.name || 'Pasien') + '</b>' +
             (t.nik ? '<br><span style="font-size:11px;color:#1B5FAA;font-weight:700;font-family:ui-monospace,Menlo,Consolas,monospace;">NIK ' + escapeHtml(t.nik) + '</span>' : '') +
+            (waVal ? '<br><span style="font-size:11px;color:#25D366;font-weight:700;font-family:ui-monospace,Menlo,Consolas,monospace;">WA Pasien ' + escapeHtml(waVal) + '</span>' : '') +
             '<br><span style="font-size:11px;color:#555;">' +
               'Lat ' + Number(t.lat).toFixed(6) + ', Lng ' + Number(t.lng).toFixed(6) +
               '<br>Akurasi ' + acc +
@@ -1291,7 +1511,11 @@
 
         if (userMapWA && userMapTarget) {
           userMapWA.setAttribute('href',
-            buildWALink(userMapTarget, { toPatient: !!userMapTarget.phone }));
+            buildWALink(userMapTarget, { toPatient: true }));
+        }
+        if (userMapWAAdmin && userMapTarget) {
+          userMapWAAdmin.setAttribute('href',
+            buildWALink(userMapTarget, { toAdmin: true }));
         }
       }
 
@@ -1328,19 +1552,22 @@
         var live = (id && patientData[id]) ? patientData[id] : null;
 
         var name = getItemName(item);
-        var nik  = getItemNIK(item);
+        var nik  = getItemNIK(item) || (live ? live.nik : '');
+        var waDom = getItemWA(item);
+        var waLive = live ? resolvePatientWA(live) : '';
+        var waJadwal = lookupWAFromJadwalByNIK(nik);
+        var wa    = waLive || waDom || waJadwal;
         var prio = getItemPriority(item);
         var acc  = live ? live.accuracy : null;
         var ts   = live ? live.ts : null;
         var speed = live ? live.speed : null;
         var heading = live ? live.heading : null;
-        var phone = live ? live.phone : null;
         var meta = getPriorityMeta(prio);
 
         userMapTarget = {
-          id: id, name: name, nik: nik, priority: prio,
+          id: id, name: name, nik: nik, wa: wa, priority: prio,
           lat: crd.lat, lng: crd.lng, accuracy: acc, ts: ts,
-          speed: speed, heading: heading, phone: phone
+          speed: speed, heading: heading
         };
         userMapFollow = true;
 
@@ -1362,7 +1589,11 @@
 
         if (userMapWA) {
           userMapWA.setAttribute('href',
-            buildWALink(userMapTarget, { toPatient: !!userMapTarget.phone }));
+            buildWALink(userMapTarget, { toPatient: true }));
+        }
+        if (userMapWAAdmin) {
+          userMapWAAdmin.setAttribute('href',
+            buildWALink(userMapTarget, { toAdmin: true }));
         }
 
         userMapOverlay.classList.add('show');
@@ -1392,6 +1623,7 @@
             '<div style="min-width:180px;">' +
               '<b>' + escapeHtml(name || 'Pasien') + '</b>' +
               (nik ? '<br><span style="font-size:11px;color:#1B5FAA;font-weight:700;font-family:ui-monospace,Menlo,Consolas,monospace;">NIK ' + escapeHtml(nik) + '</span>' : '') +
+              (wa ? '<br><span style="font-size:11px;color:#25D366;font-weight:700;font-family:ui-monospace,Menlo,Consolas,monospace;">WA ' + escapeHtml(wa) + '</span>' : '') +
               '<br><span style="font-size:11px;color:#555;">Kelas: <b>' + escapeHtml(meta.label) + '</b></span>' +
             '</div>'
           ).openPopup();
@@ -1473,7 +1705,7 @@
          11. KLIK PASIEN → BUKA MODAL PETA PER-USER (+ WA)
          ========================================================= */
       listEl.addEventListener('click', function (e) {
-        /* ── TOMBOL WHATSAPP PER ITEM ── */
+        /* ── TOMBOL WHATSAPP PER ITEM → LANGSUNG KE NOMOR PASIEN ── */
         var waBtn = e.target.closest
           ? e.target.closest('.wa-btn, [data-action="wa"]')
           : null;
@@ -1482,8 +1714,13 @@
           e.stopPropagation();
           var waLi = waBtn.closest ? waBtn.closest('.item') : null;
           if (waLi) {
+            /* Pastikan cache jadwal sudah update sebelum build link */
+            refreshJadwalCacheIfChanged();
+
             var payload = getPatientPayload(waLi);
-            var waUrl = buildWALink(payload, { toPatient: !!payload.phone });
+            /* ✅ Default: kirim ke PASIEN. Kalau pasien tidak punya WA,
+               buildWALink() otomatis fallback ke ADMIN RS. */
+            var waUrl = buildWALink(payload, { toPatient: true });
             window.open(waUrl, '_blank', 'noopener');
           }
           return;
@@ -1522,6 +1759,7 @@
       function makePatientPopupHTML(data) {
         var safeName = escapeHtml(data.name || 'Pasien');
         var nik = data.nik ? sanitizeNIK(data.nik) : '';
+        var wa  = pickPatientWA(data);
         var lat = Number(data.lat).toFixed(6);
         var lng = Number(data.lng).toFixed(6);
         var acc = data.accuracy != null ? '±' + Math.round(data.accuracy) + ' m' : '-';
@@ -1531,6 +1769,7 @@
         return '<div style="min-width:200px;">' +
                '<b>' + safeName + '</b>' +
                (nik ? '<br><span style="font-size:11px;color:#1B5FAA;font-weight:700;font-family:ui-monospace,Menlo,Consolas,monospace;">NIK ' + nik + '</span>' : '') +
+               (wa ? '<br><span style="font-size:11px;color:#25D366;font-weight:700;font-family:ui-monospace,Menlo,Consolas,monospace;">WA ' + escapeHtml(wa) + '</span>' : '') +
                '<br><span style="font-size:11px;color:#555;">' +
                  'Kelas: <b>' + prioLabel + '</b><br>' +
                  'Lat ' + lat + ', Lng ' + lng + '<br>' +
@@ -1553,11 +1792,25 @@
         var prio = normalizePriority(data.priority);
         var nik  = sanitizeNIK(data.nik || '');
 
+        /* Prioritaskan nomor WA:
+           1. payload `wa`
+           2. lookup jadwal_berobat by NIK
+           3. `phone` / `hp` lama
+        */
+        var waDirect = sanitizeWA(
+          data.wa != null ? data.wa
+          : data.phone != null ? data.phone
+          : data.hp != null ? data.hp
+          : ''
+        );
+        var waFromJadwal = lookupWAFromJadwalByNIK(nik);
+        var wa = waDirect || waFromJadwal;
+
         patientData[id] = {
           id: id,
           name: data.name || 'Pasien',
           nik: nik,
-          phone: data.phone ? String(data.phone).replace(/[^0-9]/g, '') : null,
+          wa: wa,
           priority: prio,
           lat: lat,
           lng: lng,
@@ -1603,7 +1856,7 @@
           userMapTarget.speed   = patientData[id].speed;
           userMapTarget.ts      = patientData[id].ts;
           userMapTarget.priority = prio;
-          userMapTarget.phone   = patientData[id].phone;
+          userMapTarget.wa      = patientData[id].wa;
           updateUserMapLive();
         }
       }
@@ -1620,12 +1873,18 @@
         var label = meta.label;
         var nik = sanitizeNIK(data.nik || '');
 
+        /* Resolve WA dari semua sumber — sinkron dengan jadwal_berobat */
+        var waDirect = sanitizeWA(data.wa || '');
+        var waJadwal = lookupWAFromJadwalByNIK(nik);
+        var wa = waDirect || waJadwal;
+
         if (!item) {
           item = document.createElement('li');
           item.className = 'item ' + meta.cls + ' is-clickable';
           item.dataset.id = id;
           item.dataset.name = data.name;
           item.dataset.nik = nik;
+          item.dataset.wa  = wa;
           item.dataset.priority = prio;
           item.dataset.lat = data.lat;
           item.dataset.lng = data.lng;
@@ -1656,13 +1915,26 @@
             nameWrap.appendChild(nikEl);
           }
 
+          if (wa) {
+            var waEl = document.createElement('div');
+            waEl.className = 'item-wa';
+            var waLbl = document.createElement('span');
+            waLbl.className = 'item-wa-label';
+            waLbl.textContent = 'WA';
+            var waVal = document.createElement('span');
+            waVal.className = 'item-wa-value';
+            waVal.textContent = wa;
+            waEl.appendChild(waLbl);
+            waEl.appendChild(waVal);
+            nameWrap.appendChild(waEl);
+          }
+
           var nameMeta = document.createElement('div');
           nameMeta.className = 'item-meta';
           nameMeta.textContent = 'Lat ' + Number(data.lat).toFixed(5) +
                                  ', Lng ' + Number(data.lng).toFixed(5);
           nameWrap.appendChild(nameMeta);
 
-          /* Grup kanan: HANYA tombol Whatsapp */
           var actions = document.createElement('div');
           actions.className = 'item-actions';
 
@@ -1670,8 +1942,10 @@
           waBtn.type = 'button';
           waBtn.className = 'wa-btn';
           waBtn.setAttribute('data-action', 'wa');
-          waBtn.setAttribute('aria-label', 'Kirim Whatsapp tentang ' + data.name);
-          waBtn.title = 'Kirim Whatsapp';
+          waBtn.setAttribute('aria-label', 'Kirim Whatsapp ke ' + data.name);
+          waBtn.title = hasPatientWA(data)
+            ? 'Kirim WhatsApp langsung ke pasien (template pesan otomatis)'
+            : 'Pasien belum punya nomor WA — akan dikirim ke admin RS';
           waBtn.textContent = 'Whatsapp';
           actions.appendChild(waBtn);
 
@@ -1685,6 +1959,7 @@
           item.dataset.lng = data.lng;
           item.dataset.priority = prio;
           item.dataset.nik = nik;
+          item.dataset.wa  = wa;
 
           var existingNik = item.querySelector('.item-nik');
           if (nik) {
@@ -1711,6 +1986,33 @@
             }
           } else if (existingNik && existingNik.parentNode) {
             existingNik.parentNode.removeChild(existingNik);
+          }
+
+          var existingWa = item.querySelector('.item-wa');
+          if (wa) {
+            if (existingWa) {
+              var waValEl = existingWa.querySelector('.item-wa-value');
+              if (waValEl) waValEl.textContent = wa;
+            } else {
+              var nameWrap3 = item.querySelector('.item-top > div:first-child');
+              if (nameWrap3) {
+                var newWa = document.createElement('div');
+                newWa.className = 'item-wa';
+                var wlb = document.createElement('span');
+                wlb.className = 'item-wa-label';
+                wlb.textContent = 'WA';
+                var wvl = document.createElement('span');
+                wvl.className = 'item-wa-value';
+                wvl.textContent = wa;
+                newWa.appendChild(wlb);
+                newWa.appendChild(wvl);
+                var metaNode2 = nameWrap3.querySelector('.item-meta');
+                if (metaNode2) nameWrap3.insertBefore(newWa, metaNode2);
+                else nameWrap3.appendChild(newWa);
+              }
+            }
+          } else if (existingWa && existingWa.parentNode) {
+            existingWa.parentNode.removeChild(existingWa);
           }
 
           var metaEl = item.querySelector('.item-meta');
@@ -1793,7 +2095,13 @@
         if (!existing) return;
         existing.name = data.name || existing.name;
         if (data.nik != null) existing.nik = sanitizeNIK(data.nik);
-        if (data.phone != null) existing.phone = String(data.phone).replace(/[^0-9]/g, '');
+        if (data.wa != null || data.phone != null || data.hp != null) {
+          existing.wa = sanitizeWA(
+            data.wa != null ? data.wa
+            : data.phone != null ? data.phone
+            : data.hp
+          );
+        }
         if (data.priority) existing.priority = normalizePriority(data.priority);
 
         var marker = window.patientMarkers[data.id];
@@ -1806,7 +2114,7 @@
         if (userMapTarget && userMapTarget.id === data.id) {
           userMapTarget.name = existing.name;
           userMapTarget.nik = existing.nik;
-          userMapTarget.phone = existing.phone;
+          userMapTarget.wa = existing.wa;
           userMapTarget.priority = existing.priority;
           userMapTitle.textContent = existing.name || 'Pasien';
           var prioMeta = getPriorityMeta(existing.priority);
@@ -1818,7 +2126,11 @@
             (sub2[1] ? '<span class="uma-tag">' + escapeHtml(sub2[1]) + '</span>' : '');
           if (userMapWA) {
             userMapWA.setAttribute('href',
-              buildWALink(userMapTarget, { toPatient: !!userMapTarget.phone }));
+              buildWALink(userMapTarget, { toPatient: true }));
+          }
+          if (userMapWAAdmin) {
+            userMapWAAdmin.setAttribute('href',
+              buildWALink(userMapTarget, { toAdmin: true }));
           }
         }
       }
@@ -1905,6 +2217,12 @@
             if (p && p.lat != null && p.lng != null) {
               p.priority = normalizePriority(p.priority);
               p.nik = sanitizeNIK(p.nik || '');
+              p.wa  = sanitizeWA(
+                p.wa != null ? p.wa
+                : p.phone != null ? p.phone
+                : p.hp != null ? p.hp
+                : ''
+              );
               activeIds[p.id] = true;
               upsertPatientMarker(p);
             }
@@ -1931,14 +2249,33 @@
           lastSnapshot = '';
           loadFromLocalStorage(true);
         }
+        /* Jadwal berobat berubah → refresh cache WA & sinkronkan */
+        if (e.key === JADWAL_STORAGE_KEY) {
+          refreshJadwalCacheIfChanged();
+          syncAllPatientWAB();
+        }
       });
       setInterval(function () { loadFromLocalStorage(false); }, 2000);
+
+      /* Polling ringan untuk jadwal_berobat — deteksi perubahan antar tab */
+      setInterval(function () {
+        if (refreshJadwalCacheIfChanged()) {
+          syncAllPatientWAB();
+        }
+      }, 3000);
+
       document.addEventListener('visibilitychange', function () {
         if (document.visibilityState === 'visible') {
           lastSnapshot = '';
+          if (refreshJadwalCacheIfChanged()) {
+            syncAllPatientWAB();
+          }
           loadFromLocalStorage(true);
         }
       });
+
+      /* Inisialisasi cache dari jadwal_berobat.html */
+      rebuildJadwalCache();
 
       /* =========================================================
          16. TOMBOL HAPUS RIWAYAT (GLOBAL)
@@ -2024,8 +2361,19 @@
         reload: function () { lastSnapshot = ''; loadFromLocalStorage(true); },
         normalizePriority: normalizePriority,
         sanitizeNIK: sanitizeNIK,
+        sanitizeWA: sanitizeWA,
+        normalizeWA: normalizeWA,
+        pickPatientWA: pickPatientWA,
+        hasPatientWA: hasPatientWA,
         buildWALink: buildWALink,
         waConfig: WA_CONFIG,
+
+        /* ── Sinkronisasi WA dari jadwal_berobat.html ── */
+        lookupWAFromJadwalByNIK: lookupWAFromJadwalByNIK,
+        refreshJadwalCacheIfChanged: refreshJadwalCacheIfChanged,
+        syncAllPatientWAB: syncAllPatientWAB,
+        JADWAL_STORAGE_KEY: JADWAL_STORAGE_KEY,
+
         markers: window.patientMarkers,
         data: patientData,
         hospital: HOSPITAL_COORD,
@@ -2139,7 +2487,14 @@
               if (window.__dashboard && typeof window.__dashboard.fixMap === 'function') {
                 try { window.__dashboard.fixMap(80); } catch (e) {}
               }
-            }, 100);
+              /* Setelah jadwal termuat, sinkronkan WA ke pasien */
+              if (window.__dashboard && typeof window.__dashboard.refreshJadwalCacheIfChanged === 'function') {
+                try {
+                  window.__dashboard.refreshJadwalCacheIfChanged();
+                  window.__dashboard.syncAllPatientWAB();
+                } catch (e) {}
+              }
+            }, 150);
           })
           .catch(function (err) {
             console.error('[jadwal_berobat] GAGAL memuat modul:', err.message);
