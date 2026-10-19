@@ -127,11 +127,7 @@
           <a class="user-map-btn wa" id="userMapWA" href="#" target="_blank" rel="noopener"
              title="Kirim WhatsApp ke pasien dengan template pesan">
             <span>Chat Pasien</span>
-          </a>
-          <a class="user-map-btn wa-admin" id="userMapWAAdmin" href="#" target="_blank" rel="noopener"
-             title="Kirim WhatsApp ke admin RS tentang pasien ini">
-            <span>Chat Admin</span>
-          </a>
+          </a>       
           <a class="user-map-btn primary" id="userMapGmaps" href="#" target="_blank" rel="noopener">
             <span>Rute</span>
           </a>
@@ -1061,11 +1057,9 @@
         var waLine = '';
         var waVal = pickPatientWA(t);
         if (waVal) {
-          waLine = '<br><b>WA Pasien</b> ' + escapeHtml(waVal) +
-                   ' &nbsp; <b>WA Admin</b> ' + escapeHtml(WA_CONFIG.adminNumber);
+          waLine = '<br><b>WA Pasien</b> ' + escapeHtml(waVal);
         } else {
-          waLine = '<br><b>WA Pasien</b> <i style="color:#999;">belum ada</i>' +
-                   ' &nbsp; <b>WA Admin</b> ' + escapeHtml(WA_CONFIG.adminNumber);
+          waLine = '<br><b>WA Pasien</b> <i style="color:#999;">belum ada</i>';
         }
 
         var jadwal = lookupJadwalByNIK(t.nik);
