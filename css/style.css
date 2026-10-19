@@ -727,6 +727,23 @@ header.bar .bar-right {
   flex: 0 0 auto;
   display: flex;
   align-items: center;
+  gap: 8px;
+}
+#logoutBtn {
+  border: 1px solid rgba(255, 255, 255, .65);
+  border-radius: 8px;
+  padding: 7px 11px;
+  background: rgba(255, 255, 255, .12);
+  color: #fff;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+#logoutBtn:hover { background: rgba(255, 255, 255, .22); }
+#logoutBtn:disabled { opacity: .65; cursor: wait; }
+@media (max-width: 420px) {
+  #logoutBtn { padding: 7px 8px; font-size: 12px; }
 }
 @media (max-width: 420px) {
   header.bar { padding: 6px 10px; min-height: 56px; gap: 8px; }
@@ -880,6 +897,9 @@ header.bar .bar-right {
   z-index: 12000;
   animation: umaFade .2s ease;
   overscroll-behavior: contain;
+}
+.user-map-overlay:not(.show) {
+  display: none !important;
 }
 .user-map-overlay.show { display: flex; }
 @keyframes umaFade { from { opacity: 0; } to { opacity: 1; } }
@@ -1062,6 +1082,49 @@ header.bar .bar-right {
     max-width: 720px;
     max-height: 88vh;
     animation: umaPop .26s cubic-bezier(.32,.72,0,1);
+  }
+
+  /* Desktop dashboard: gunakan seluruh area layar, bukan frame mobile 480px. */
+  @media (min-width: 768px) {
+    .layout {
+      max-width: none;
+      width: 100%;
+    }
+
+    .bar {
+      max-width: none;
+      left: 0;
+      transform: none;
+      padding-left: 24px;
+      padding-right: 24px;
+    }
+
+    .top-card {
+      left: 24px;
+      right: 408px;
+      top: calc(var(--safe-top) + 78px);
+    }
+
+    .side {
+      left: auto;
+      right: 20px;
+      top: calc(var(--safe-top) + 78px);
+      bottom: 20px;
+      width: 360px;
+      max-height: none;
+      border-radius: 18px;
+      padding: 14px 16px calc(var(--safe-bottom) + 16px);
+      box-shadow: 0 8px 28px rgba(0, 0, 0, .2);
+    }
+
+    .sheet-handle { display: none; }
+
+    .my-location-wrap {
+      right: 408px;
+      bottom: 24px;
+    }
+
+    .back-fab { display: none; }
   }
   @keyframes umaPop {
     from { transform: scale(.94); opacity: 0; }
