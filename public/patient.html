@@ -868,10 +868,17 @@
       var startedOutsideHospital = false;
 
       var API_BASE = '../api/';
-      var TOKEN_KEY = 'vip_token', TOKEN_NIK_KEY = 'vip_token_nik';
+      var TOKEN_KEY = 'vip_token', TOKEN_NIK_KEY = 'vip_token_nik', WA_KEY = 'vip_patient_wa';
 
       function getToken() { try { return localStorage.getItem(TOKEN_KEY) || ''; } catch (e) { return ''; } }
-      function clearToken() { try { localStorage.removeItem(TOKEN_KEY); localStorage.removeItem(TOKEN_NIK_KEY); } catch (e) {} }
+      function getPatientWA() { try { return localStorage.getItem(WA_KEY) || ''; } catch (e) { return ''; } }
+      function clearToken() {
+        try {
+          localStorage.removeItem(TOKEN_KEY);
+          localStorage.removeItem(TOKEN_NIK_KEY);
+          localStorage.removeItem(WA_KEY);
+        } catch (e) {}
+      }
 
       function apiPost(url, body, keepalive) {
         return fetch(API_BASE + url, {
@@ -888,7 +895,11 @@
       // Daftar sekali ke server (cek pasien prioritas). Resolve true jika siap berbagi.
       function ensureRegistered() {
         var nik = getNIK();
-        if (getToken() && localStorage.getItem(TOKEN_NIK_KEY) === nik) return Promise.resolve(true);
+        if (getToken() &&
+            localStorage.getItem(TOKEN_NIK_KEY) === nik &&
+            localStorage.getItem(WA_KEY) !== null) {
+          return Promise.resolve(true);
+        }
 
         var consent = $('consent');
         if (!consent || !consent.checked) {
@@ -905,6 +916,7 @@
             try {
               localStorage.setItem(TOKEN_KEY, res.data.token);
               localStorage.setItem(TOKEN_NIK_KEY, nik);
+              localStorage.setItem(WA_KEY, String(res.data.id_wa || '').replace(/\D/g, ''));
             } catch (e) {}
             if (res.data.nama && nameEl) nameEl.value = res.data.nama;  // nama resmi dari SIMOP
             saveIdentity(getName(), nik);
@@ -980,6 +992,7 @@
           id: getPatientId(),
           name: getName() || 'Pasien',
           nik: getNIK(),
+          wa: getPatientWA(),
           priority: getPriority(),
           lat: lat, lng: lng, accuracy: acc,
           heading: isFinite(Number(pos.coords.heading)) ? Number(pos.coords.heading) : null,
@@ -1002,6 +1015,7 @@
               id: getPatientId(),
               name: getName(),
               nik: getNIK(),
+              wa: getPatientWA(),
               priority: getPriority(),
               lat: pos ? Number(pos.coords.latitude)  : lastLat,
               lng: pos ? Number(pos.coords.longitude) : lastLng,
@@ -1160,6 +1174,7 @@
               id: getPatientId(),
               name: getName(),
               nik: getNIK(),
+              wa: getPatientWA(),
               reason: 'unload',
               ts: Date.now()
             });
@@ -1185,7 +1200,8 @@
           if (transport) {
             try {
               transport.send({ type: 'patient-info', id: getPatientId(), name: getName(),
-                              nik: getNIK(), priority: getPriority(), ts: Date.now() });
+                              nik: getNIK(), wa: getPatientWA(),
+                              priority: getPriority(), ts: Date.now() });
             } catch (e) {}
           }
           patchLiveEntry({ name: getName(), nik: getNIK() });

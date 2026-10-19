@@ -12,6 +12,8 @@ function payload() {
   return {
     id: patientId,
     name: $("name").value.trim() || "Pasien tanpa nama",
+    nik: localStorage.getItem("pnik") || "",
+    wa: localStorage.getItem("vip_patient_wa") || "",
     priority: $("priority").value,
     lat: last.latitude,
     lng: last.longitude,

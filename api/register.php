@@ -18,9 +18,10 @@ $conn = db();
 // 2. Cek pasien prioritas: NIK -> PASIEN -> REGISTRASI_RJ -> PELANGGAN_PRIORITAS
 $sql = "SELECT TRIM(pr.KODE_PELANGGAN) AS KODE_PELANGGAN,
                pr.NAMA_PELANGGAN,
-               x.NAMA
+               x.NAMA,
+               x.ID_WA
           FROM (
-                SELECT r.KODE_PELANGGAN, ps.NAMA
+                SELECT r.KODE_PELANGGAN, ps.NAMA, ps.ID_WA
                   FROM TUGU.PASIEN ps
                   JOIN TUGU.REGISTRASI_RJ r ON r.NO_RM = ps.KODE_PASIEN
                  WHERE ps.NO_KTP = :nik
@@ -82,5 +83,6 @@ json_out([
     'ok'        => true,
     'token'     => $token,
     'nama'      => $nama,
+    'id_wa'     => trim((string)($prio['ID_WA'] ?? '')),
     'perusahaan'=> $prio['NAMA_PELANGGAN'],
 ]);
