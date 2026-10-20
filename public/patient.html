@@ -864,6 +864,7 @@
       var LS_LIVE_KEY = 'pasien_lokasi_live';
 
       var hasArrived = false;
+      var lastPos = null, hbTimer = null;
       var firstPositionRecorded = false;
       var startedOutsideHospital = false;
 
@@ -1046,6 +1047,7 @@
         var lat = Number(pos.coords.latitude), lng = Number(pos.coords.longitude);
         var acc = Number(pos.coords.accuracy), now = Date.now();
         if (!isFinite(lat) || !isFinite(lng)) return;
+        lastPos = pos;
 
         if (!firstPositionRecorded) {
           firstPositionRecorded = true;
@@ -1104,6 +1106,11 @@
         setFormLocked(true); /* ★ kunci field selama sharing aktif */
         if (st) st.textContent = 'Meminta izin lokasi…';
 
+        clearInterval(hbTimer);
+        hbTimer = setInterval(function () {
+          if (isSharing && !hasArrived && lastPos) sendLocation(lastPos);
+        }, 15000);
+
         navigator.geolocation.getCurrentPosition(onWatchSuccess, onWatchError,
           { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
 
@@ -1116,6 +1123,8 @@
       }
 
       function stopSharing(reason) {
+        clearInterval(hbTimer); lastPos = null;
+        
         if (watchId !== null) {
           try { navigator.geolocation.clearWatch(watchId); } catch (e) {}
           watchId = null;

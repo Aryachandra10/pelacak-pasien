@@ -30,16 +30,9 @@ $GEOAPIFY_API_KEY = 'fc249c8458504d8790e29e110336616b';
 // ============================================================
 //  Pilih peta yang dipakai front-end: 'google' atau 'geoapify'
 // ============================================================
-$MAP_PROVIDER = 'geoapify'; // ganti ke 'google' kalau pakai Google Maps
+$MAP_PROVIDER = 'geoapify'; 
 
-// ============================================================
-//  ☎️  NOMOR LAYANAN WHATSAPP RS PELABUHAN JAKARTA
-// ============================================================
-// Nomor layanan WhatsApp resmi rumah sakit.
-// Semua modul (index.html, jadwal_berobat.html, patient.html,
-// whatsapp-service.js) akan otomatis mengambil dari sini.
-// ============================================================
-$WHATSAPP_RS_RAW = '0812-8835-7422'; // format tampilan (boleh pakai strip)
+$WHATSAPP_RS_RAW = '0812-8835-7422'; 
 
 // Sanitasi → hanya angka
 $WA_DIGITS = preg_replace('/[^0-9]/', '', $WHATSAPP_RS_RAW);
@@ -63,17 +56,13 @@ if (substr($WA_DISPLAY, 0, 2) === '62') {
 }
 $WA_DISPLAY = preg_replace('/(\d{4})(?=\d)/', '$1-', $WA_DISPLAY);
 
-// ============================================================
-//  Susun URL tile Geoapify (hanya kalau provider = geoapify)
-//  Pakai concat (titik), bukan interpolasi, agar aman.
-// ============================================================
 $tileUrl = '';
 if ($MAP_PROVIDER === 'geoapify' && $GEOAPIFY_API_KEY !== '') {
-    // Style "carto" (mirip Google Maps). Bisa diganti ke:
-    //   osm-bright, osm-carto, toner, positron, dark-matter, klokantech-basic
     $tileUrl = 'https://maps.geoapify.com/v1/tile/carto/'
              . '{z}/{x}/{y}.png?apiKey=' . $GEOAPIFY_API_KEY;
 }
+
+$base = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/');
 
 // ============================================================
 //  Konfigurasi utama
@@ -128,11 +117,11 @@ $config = [
         'address'      => 'Jl. Pelabuhan No. 1, Jakarta Utara',
     ],
 
-    // WebSocket:
-    //   '' = mode demo (antar-tab di satu browser, tanpa server)
-    //   isi = mode live, mis. "ws://localhost:8080" atau "wss://domain-anda.com/ws"
-    'WS_URL' => '',
-    'STALE_MS'  => 30000, // lokasi dianggap tidak live jika tak ada update selama ini
+    // SSE live: pasien mengirim POST, dashboard menerima EventSource.
+    // Kosongkan keduanya hanya untuk mode demo antar-tab.
+    'SSE_PUBLISH_URL' => $base . '/live/publish',
+    'SSE_URL'         => $base . '/live/events',
+    'STALE_MS'  => 60000, // lokasi dianggap tidak live jika tak ada update selama ini
     'SPEED_KMH' => 30,    // asumsi kecepatan untuk estimasi tiba (garis lurus)
 ];
 
